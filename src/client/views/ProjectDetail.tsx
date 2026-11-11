@@ -3,6 +3,8 @@
  *
  * 归档在这里不是单独一块版面，而是列表的第三种状态——和全局页同构，
  * 这样不会出现「上面的表空着、下面的归档箱有东西」这种同屏矛盾。
+ *
+ * 数字全部区分「未知」与「零」：拿不到数据时显示「—」，不拿空列表算 0。
  */
 import type { ProjectEntry, SkillEntry, SkillStateFilter } from '../../shared/types.ts'
 import type { Translate } from '../dsh.ts'
@@ -12,12 +14,19 @@ import { SegNav } from './SegNav.tsx'
 import type { RangeView } from './SegNav.tsx'
 import { SkillList } from './SkillList.tsx'
 
-/** 项目页三个筛选态各自的数量；`counts.active` 是生效中的条目数。 */
+/** 项目页三个筛选态各自的数量；null 表示还没拿到数据，界面显示「—」。 */
 export interface ProjectCounts {
-  readonly active: number
-  readonly never: number
-  readonly neverTokens: number
-  readonly archived: number
+  readonly active: number | null
+  readonly never: number | null
+  readonly neverTokens: number | null
+  readonly archived: number | null
+}
+
+/** 头部小结：数量和占用可以先用项目看板的汇总兜底，调用次数要等列表到齐才知道。 */
+export interface ProjectTotals {
+  readonly count: number
+  readonly tokens: number
+  readonly calls: number | null
 }
 
 export interface ProjectDetailProps {
@@ -28,8 +37,8 @@ export interface ProjectDetailProps {
   filter: SkillStateFilter
   sortBy: 'calls' | 'tokens'
   counts: ProjectCounts
-  /** 生效中列表的汇总；拿不到数据（请求失败）时为 null，界面显示「—」而不是 0。 */
-  totals: { readonly count: number; readonly tokens: number; readonly calls: number } | null
+  /** 生效中列表的汇总；请求失败且没有任何数据时为 null。 */
+  totals: ProjectTotals | null
   loading: boolean
   error: string | null
   canOpen: boolean
@@ -47,6 +56,9 @@ export interface ProjectDetailProps {
   onOpenDir(entry: SkillEntry): void
 }
 
+/** 未知数字的占位符。 */
+const DASH = '—'
+
 export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
   const { t, project, entries, filter, sortBy, counts, totals, loading, error, canOpen, pendingKey, view, callsTip } =
     props
@@ -54,18 +66,18 @@ export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
   const { onArchive, onRestore, onOpenDir } = props
 
   const archived = filter === 'archived'
+  const neverCalled = filter === 'never-called'
   const emptyText = archived
     ? t('table.emptyArchived')
-    : filter === 'never-called'
+    : neverCalled
       ? t('table.emptyNever')
       : t('table.emptyAll')
 
-  // 拿不到数据（请求失败）时计数显示「—」：说 0 等于断言「确实一个都没有」。
-  const countText = (count: number): string => (totals === null ? '—' : formatNumber(count))
-  const chip = (state: SkillStateFilter, label: string, count: number): JSX.Element => (
+  const fmt = (value: number | null): string => (value === null ? DASH : formatNumber(value))
+  const chip = (state: SkillStateFilter, label: string, count: number | null): JSX.Element => (
     <button type="button" className="dscx-chip" aria-pressed={filter === state} onClick={() => onFilter(state)}>
       {label}
-      <span className="dscx-chip-n">{countText(count)}</span>
+      <span className="dscx-chip-n">{fmt(count)}</span>
     </button>
   )
 
@@ -89,17 +101,17 @@ export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
           </div>
           <div className="dscx-pmeta">
             <span>
-              <b>{countText(counts.active)}</b>
+              <b>{totals === null ? DASH : formatNumber(totals.count)}</b>
               {t('detail.skillCountSuffix')}
             </span>
             <span className="dscx-dotsep" />
             <span>
-              <b>{totals === null ? '—' : formatNumber(totals.tokens)}</b>
+              <b>{totals === null ? DASH : formatNumber(totals.tokens)}</b>
               {t('detail.tokensUnit')}
             </span>
             <span className="dscx-dotsep" />
             <span>
-              <b>{totals === null ? '—' : formatNumber(totals.calls)}</b>
+              <b>{fmt(totals?.calls ?? null)}</b>
               {t('detail.callsSuffix')}
             </span>
           </div>
@@ -123,14 +135,14 @@ export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
           {chip('never-called', t('filter.never'), counts.never)}
           {chip('archived', t('filter.archived'), counts.archived)}
         </div>
-        {/* 归档态不显示排序：条目少，且全局页同样隐藏，两边行为保持一致 */}
-        {archived ? null : (
+        {/* 归档态与「从未被调用」不显示排序：前者条目少；后者调用次数都是 0，两种排序得到的是同一个顺序 */}
+        {archived || neverCalled ? null : (
           <button type="button" className="dscx-btn dscx-btn-sm dscx-sort" onClick={onToggleSort}>
             {sortBy === 'tokens' ? t('sort.byTokens') : t('sort.byCalls')}
           </button>
         )}
       </div>
-      {filter === 'never-called' ? (
+      {neverCalled && counts.never !== null && counts.neverTokens !== null ? (
         <div className="dscx-fbar">
           {t('filter.neverSummary', {
             count: formatNumber(counts.never),

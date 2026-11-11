@@ -458,19 +458,23 @@ export class ContextOptimizeService {
     }
     archived.sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
     // 项目根上的 skill 也算「还在磁盘上」：只按全局判断会把项目级 skill 误报成已移除。
-    // 归档目录也要算：归档是可逆的软删除，不是删除，不能让它掉进「已移除」。
+    // 多个工作区可能解析到同一个项目根，先去重，避免同一个目录被反复扫。
     const knownNames = new Set<string>()
     for (const entry of entries) knownNames.add(entry.name)
     for (const entry of archived) knownNames.add(entry.name)
-    // 多个工作区可能解析到同一个项目根，先去重，避免同一个目录被反复扫。
     const projectRootsSeen = new Set<string>()
     for (const workspace of this.deps.workspaceRegistry?.list() ?? []) {
       if (!(await pathExists(workspace.path))) continue
       projectRootsSeen.add(await this.projectRootOf(workspace))
     }
-    for (const projectRoot of projectRootsSeen) {
-      for (const root of projectRoots(projectRoot)) {
-        for (const entry of await scanSkillRoot(root)) knownNames.add(entry.name)
+    const projectRootDefs = [...projectRootsSeen].flatMap((projectRoot) => projectRoots(projectRoot))
+    for (const root of projectRootDefs) {
+      for (const entry of await scanSkillRoot(root)) knownNames.add(entry.name)
+    }
+    // 归档是可逆的软删除、不是删除：只有「历史调用过、但生效目录里找不到」的名字，才值得再去归档目录确认。
+    // 否则每次扫描都要把所有项目归档目录读一遍（overview / skills 会反复触发）。
+    if ([...usage.keys()].some((name) => !knownNames.has(name))) {
+      for (const root of projectRootDefs) {
         for (const entry of await scanArchiveDir(archiveDirFor(root.path), root.id)) knownNames.add(entry.name)
       }
     }

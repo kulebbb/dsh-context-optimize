@@ -19,6 +19,7 @@ import { OptimizeRequestError } from '../api.ts'
 import type { Translate } from '../dsh.ts'
 import { errorMessage, formatNumber } from '../format.ts'
 import { ProjectDetail } from './ProjectDetail.tsx'
+import type { ProjectCounts, ProjectTotals } from './ProjectDetail.tsx'
 import { ProjectsView } from './ProjectsView.tsx'
 import { ProgressStrip } from './ProgressStrip.tsx'
 import { SegNav } from './SegNav.tsx'
@@ -292,23 +293,28 @@ export function Panel(props: PanelProps): JSX.Element {
     const base = filter === 'never-called' ? projectNeverEntries : projectActiveEntries
     return [...base].sort(sortBy === 'tokens' ? compareByTokens : compareByCalls)
   }, [filter, projectArchivedEntries, projectActiveEntries, projectNeverEntries, sortBy])
-  const projectCounts = useMemo(
+  // 计数区分「未知」与「零」：对应请求还没回来（或失败）时给 null，界面显示「—」。
+  const projectCounts = useMemo<ProjectCounts>(
     () => ({
-      active: projectActiveEntries.length,
-      never: projectNeverEntries.length,
-      neverTokens: projectNeverEntries.reduce((sum, entry) => sum + entry.approxTokens, 0),
-      archived: projectArchivedEntries.length,
+      active: projectActive.data === null ? null : projectActiveEntries.length,
+      never: projectActive.data === null ? null : projectNeverEntries.length,
+      neverTokens:
+        projectActive.data === null
+          ? null
+          : projectNeverEntries.reduce((sum, entry) => sum + entry.approxTokens, 0),
+      archived: projectArchived.data === null ? null : projectArchivedEntries.length,
     }),
-    [projectActiveEntries, projectArchivedEntries, projectNeverEntries],
+    [projectActive.data, projectActiveEntries, projectArchived.data, projectArchivedEntries, projectNeverEntries],
   )
   // 请求失败且没有数据时不拿空列表算总数：头部显示「—」，别和错误提示一起说成 0。
-  // 首屏还在加载时用项目看板给的汇总兜底，避免数字先闪一下 0。
-  const projectTotals = useMemo(() => {
+  // 首屏还在加载时用项目看板给的汇总兜底（数量、占用已知），调用次数此时未知，给 null 显示「—」。
+  const projectTotals = useMemo<ProjectTotals | null>(() => {
     if (projectActive.data === null) {
       if (projectActive.error !== null) return null
-      return { count: project?.skillCount ?? 0, tokens: project?.approxTokens ?? 0, calls: 0 }
+      return { count: project?.skillCount ?? 0, tokens: project?.approxTokens ?? 0, calls: null }
     }
-    return totalsOf(projectActiveEntries)
+    const sum = totalsOf(projectActiveEntries)
+    return { count: sum.count, tokens: sum.tokens, calls: sum.calls }
   }, [project, projectActive.data, projectActive.error, projectActiveEntries])
 
   const totals = overview.data?.totals
@@ -532,7 +538,7 @@ export function Panel(props: PanelProps): JSX.Element {
           <div className="dscx-ph-title">
             <h1 className="dscx-h1">{t('panel')}</h1>
           </div>
-          {archived ? null : (
+          {filter !== 'all' ? null : (
             <div className="dscx-ph-acts">
               <button
                 type="button"
@@ -588,7 +594,11 @@ export function Panel(props: PanelProps): JSX.Element {
         view={view}
         onSelectView={selectView}
         onRetry={reloadAll}
-        onOpenProject={(entry) => setProject(entry)}
+        onOpenProject={(entry) => {
+          // 从看板进详情默认看「生效中」：全局页可能停在其他筛选态，直接带进来会让人以为项目只剩归档。
+          setFilter('all')
+          setProject(entry)
+        }}
         onOpenPath={handleOpenPath}
       />
     )

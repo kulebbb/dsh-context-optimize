@@ -19,7 +19,6 @@ export const zh = {
   'error.retry': '重试',
   'error.skillsTitle': '读取 skill 列表失败',
   'error.projectsTitle': '读取工作区失败',
-  'error.detailTitle': '读取项目 skill 失败',
   'error.readonlyRoot': '内置 skill 只读，不能归档',
   'error.targetExists': '目标位置已有同名条目',
   'error.notFound': '目录不存在，可能已经被移动',
@@ -60,7 +59,7 @@ export const zh = {
   'table.archivedAt': '归档时间',
   'table.emptyAll': '还没有扫到生效中的 skill',
   'table.emptyNever': '没有从未被调用过的 skill',
-  'table.emptyArchived': '归档箱是空的',
+  'table.emptyArchived': '还没有归档过 skill',
   'table.noDescription': '—',
 
   'tip.source':
@@ -133,7 +132,6 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'error.retry': 'Retry',
   'error.skillsTitle': 'Could not read the skill list',
   'error.projectsTitle': 'Could not read workspaces',
-  'error.detailTitle': 'Could not read this project’s skills',
   'error.readonlyRoot': 'Bundled skills are read-only and cannot be archived',
   'error.targetExists': 'An entry with this name already exists at the target',
   'error.notFound': 'The directory no longer exists — it may have been moved',
@@ -174,7 +172,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'table.archivedAt': 'Archived at',
   'table.emptyAll': 'No active skills found yet',
   'table.emptyNever': 'No skill was never called',
-  'table.emptyArchived': 'The archive is empty',
+  'table.emptyArchived': 'Nothing archived yet',
   'table.noDescription': '—',
 
   'tip.source':

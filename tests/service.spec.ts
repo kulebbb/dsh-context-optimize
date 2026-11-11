@@ -412,6 +412,31 @@ describe('归档 / 还原（项目范围）', () => {
     expect(archivedList.entries.map((entry) => entry.name)).toEqual(['proj-skill'])
   })
 
+  it('项目 .agents 根的归档同样不会被算成「已移除」', async () => {
+    await makeSkillDir(
+      join(projectDir, '.agents', 'skills'),
+      'proj-agents-skill',
+      '---\nname: proj-agents-skill\ndescription: 项目 agents 根\n---\n',
+    )
+    service.ingest('sess-2', projectDir, NOW.getTime(), {
+      type: 'tool/call',
+      seq: 1,
+      time: NOW.getTime(),
+      data: { name: 'skill', arguments: JSON.stringify({ name: 'proj-agents-skill' }) },
+    })
+
+    const moved = await service.handle(
+      post(ROUTES.archive, {
+        scope: 'project',
+        workspaceId: 'w1',
+        rootId: 'project-agents',
+        dirName: 'proj-agents-skill',
+      }),
+    )
+    expect(moved.status).toBe(200)
+    expect((await service.overview()).totals.removed).toBe(0)
+  })
+
   it('项目范围缺 workspaceId → 400 invalid-request', async () => {
     await expectError(
       post(ROUTES.archive, { scope: 'project', rootId: 'project-dsh', dirName: 'proj-skill' }),

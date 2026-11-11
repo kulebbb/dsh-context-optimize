@@ -206,7 +206,7 @@ export const PANEL_CSS = `
 .dscx-crumb{display:flex;align-items:center;gap:7px;font:var(--dsw-font-xxs-12);
   color:var(--dsw-alias-label-caption);margin-bottom:-8px}
 .dscx-crumb button{border:0;background:transparent;color:var(--dsw-alias-label-secondary);
-  font:var(--dsw-font-xxs-12);padding:2px 6px;border-radius:var(--dsw-radius-xs);
+  font:var(--dsw-font-xxs-12);padding:4px 8px;border-radius:var(--dsw-radius-xs);
   display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .dscx-crumb button:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .dscx-crumb .sep{opacity:.5}
