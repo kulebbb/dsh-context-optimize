@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Skill 管理",
+    "description": "左栏新增「Skill 管理」：列出全局与项目级 skill、调用频次与上下文占用，一键归档（软删除）与还原，并可直接打开 skill 目录。"
+  }
+}

@@ -1,0 +1,5 @@
+# dsh-context-optimize 的 bundle 层：插入宿主插件（客户端半由 package.json 的 dsh.client 声明发现）。
+# 左栏「Skill 管理」：列出全局与项目级 skill、调用频次与上下文占用，支持一键归档 / 还原与打开目录。
+- insert:
+    - id: dsh-context-optimize
+      name: '@kulebbb/dsh-context-optimize'

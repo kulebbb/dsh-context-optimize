@@ -1,0 +1,20 @@
+# 依赖与构建中间产物
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# 本地材料，不随仓库发布
+# 含真实会话数据、本机绝对路径、内部项目名或内部过程记录
+# ---------------------------------------------------------------------------
+progress.md
+docs/01-需求确认.html
+docs/02-项目结构.html
+docs/03-视觉设计.html
+prototype/index.template.html
+prototype/mock-data.json
+
+# 截图只作为本地验收材料；对外汇报文档（docs/04）里已内联，不依赖这些文件
+prototype/screenshots/
+docs/verify/

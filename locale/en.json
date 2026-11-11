@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Skill Manager",
+    "description": "A Skill Manager entry in the sidebar: list global and project-level skills with call frequency and context cost, archive (soft-delete) or restore in one click, and open a skill's folder."
+  }
+}
