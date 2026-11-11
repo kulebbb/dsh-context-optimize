@@ -6,7 +6,7 @@
 
 **DSH（DeepSeek Harness）左侧边栏的 Skill 管理面板**：看清每个 skill 占了你多少上下文、多久没用了，没用的收起来。
 
-![dsh-context-optimize 横幅](https://raw.githubusercontent.com/kulebbb/dsh-context-optimize/main/docs/assets/banner.png)
+![dsh-context-optimize 横幅](https://github.com/kulebbb/dsh-context-optimize/releases/download/v0.1.0/banner.png)
 
 > **English.** A Skill manager for the DeepSeek Harness sidebar. It lists every installed skill with its call count, last-used date and estimated context cost, split into global and project scope, and archives or restores a skill by moving its directory into a reversible `skill-archive`.
 
@@ -24,25 +24,25 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 
 ### 全局总览
 
-![主界面截图：全局 skill 总览与上下文预算](https://raw.githubusercontent.com/kulebbb/dsh-context-optimize/main/docs/assets/screenshot-overview.png)
+![主界面截图：全局 skill 总览与上下文预算](https://github.com/kulebbb/dsh-context-optimize/releases/download/v0.1.0/screenshot-overview.png)
 
 顶部是上下文预算：所有生效中的 skill 加起来占多少 tokens、按占用排开的色带、历史调用与近 30 天调用。下面是明细表，可按调用次数或占用排序。
 
 ### 项目详情
 
-![项目详情截图：同一套三态筛选与排序](https://raw.githubusercontent.com/kulebbb/dsh-context-optimize/main/docs/assets/screenshot-project.png)
+![项目详情截图：同一套三态筛选与排序](https://github.com/kulebbb/dsh-context-optimize/releases/download/v0.1.0/screenshot-project.png)
 
 点进任意工作区，看到的项目级 skill 与全局页用同一套筛选和表格：生效中 / 从未被调用 / 已归档三个状态互斥切换，各自带计数。
 
 ### 从未被调用
 
-![从未被调用筛选截图：合计占用与列表](https://raw.githubusercontent.com/kulebbb/dsh-context-optimize/main/docs/assets/screenshot-never-called.png)
+![从未被调用筛选截图：合计占用与列表](https://github.com/kulebbb/dsh-context-optimize/releases/download/v0.1.0/screenshot-never-called.png)
 
 「从未被调用」会告诉你这些条目一共占了多少上下文——这一组通常就是最值得收起来的。
 
 ### 已归档
 
-![已归档截图：行尾一键还原](https://raw.githubusercontent.com/kulebbb/dsh-context-optimize/main/docs/assets/screenshot-archived.png)
+![已归档截图：行尾一键还原](https://github.com/kulebbb/dsh-context-optimize/releases/download/v0.1.0/screenshot-archived.png)
 
 归档后条目进入同一张表的「已归档」状态，行尾一键还原，没有任何删除动作。
 

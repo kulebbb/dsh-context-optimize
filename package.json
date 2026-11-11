@@ -1,6 +1,6 @@
 {
   "name": "@kulebbb/dsh-context-optimize",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DSH 左侧边栏「Skill 管理」：按调用频次与上下文占用查看全局 / 项目级 skill，支持可逆归档与还原。",
   "license": "MIT",
   "author": "kulebbb",
