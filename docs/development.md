@@ -57,6 +57,14 @@ dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
 | 项目页空白 | `workspaceRegistry` 服务缺失。它属于 web 层 bundle，命令行跑 `dsh` 时可能没有。 |
 | 调用次数对不上 | 口径是「模型加载该 skill 的次数 + 你手敲 `/skill名` 的次数」，按会话日志折叠，跳过已被处理过的 `seq`。缓存文件在 `~/.dsh/storages/dsh-context-optimize/frequency.v1.json`，删掉会重跑一次全量回溯（本机约 45 秒）。 |
 
+## 发布
+
+1. 改版本号 → `pnpm check` → 提交（`lib/` 一起提交，CI 会校验两者一致）。
+2. 打 tag 并推送：`git tag v0.1.0 && git push origin v0.1.0`。
+3. GitHub Actions 的 `publish` workflow 在 tag 推送时发布到 npm。它需要仓库 secret `NPM_TOKEN`（npm automation token）；没有配置时该步骤会跳过并打一条提示，不会让 workflow 变红。
+
+也可以本地手动发布：`npm publish --access public`。
+
 ## 磁盘上的位置
 
 | 内容 | 路径 |

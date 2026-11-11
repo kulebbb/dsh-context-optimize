@@ -1,13 +1,16 @@
 {
   "name": "@kulebbb/dsh-context-optimize",
   "version": "0.1.0",
-  "description": "DSH 左侧边栏「Skill 管理」面板：列出全局与项目级 skill、调用频次与上下文占用，支持一键归档 / 还原与打开目录。",
+  "description": "DSH 左侧边栏「Skill 管理」：按调用频次与上下文占用查看全局 / 项目级 skill，支持可逆归档与还原。",
   "license": "MIT",
   "author": "kulebbb",
   "homepage": "https://github.com/kulebbb/dsh-context-optimize#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kulebbb/dsh-context-optimize.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kulebbb/dsh-context-optimize/issues"
   },
   "keywords": [
     "dsh",
@@ -49,7 +52,8 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "yaml": "^2.8.0"
@@ -68,5 +72,8 @@
   "packageManager": "pnpm@11.4.0",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
