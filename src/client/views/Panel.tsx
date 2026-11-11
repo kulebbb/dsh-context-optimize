@@ -327,6 +327,9 @@ export function Panel(props: PanelProps): JSX.Element {
         })
       : t('tip.callsPlain')
 
+  // 项目详情里的计数按项目目录过滤，不能沿用「本机全部会话」的说法
+  const callsTipProject = t('tip.callsProject')
+
   const reloadAll = (): void => setRefresh((value) => value + 1)
 
   const showToast = (message: string, action?: { label: string; run: () => void }): void => {
@@ -531,7 +534,7 @@ export function Panel(props: PanelProps): JSX.Element {
         canOpen={canOpen}
         pendingKey={pendingKey}
         view={view}
-        callsTip={callsTip}
+        callsTip={callsTipProject}
         onSelectView={selectView}
         onBack={() => setProject(null)}
         onRetry={reloadAll}

@@ -67,23 +67,20 @@ describe('frontmatter 的三种写法', () => {
     expect(entry?.description.length).toBeGreaterThan(0)
   })
 
-  it('完全没有 frontmatter 时 name 退回目录名，description 为空', async () => {
+  it('完全没有 frontmatter 的目录不算 skill（与 DSH 的 parseSkillFile 一致）', async () => {
     await makeSkillDir(skillsDir, 'plain-dir', '# 只有正文\n没有 frontmatter\n')
-    const [entry] = await scanSkillRoot(rootOf())
-    expect(entry).toMatchObject({ dirName: 'plain-dir', name: 'plain-dir', description: '' })
+    // 放宽会把坏掉的目录列进来、虚增「从未被调用」，所以这里必须扫不到
+    await expect(scanSkillRoot(rootOf())).resolves.toEqual([])
   })
 
-  it('有 frontmatter 但缺 name 时退回目录名，description 仍然解析', async () => {
+  it('有 frontmatter 但缺 name 时不算 skill', async () => {
     await makeSkillDir(skillsDir, 'only-description', '---\ndescription: 只写了描述\n---\n')
-    const [entry] = await scanSkillRoot(rootOf())
-    expect(entry).toMatchObject({ name: 'only-description', description: '只写了描述' })
+    await expect(scanSkillRoot(rootOf())).resolves.toEqual([])
   })
 
-  it('YAML 损坏时降级返回目录名与空描述，不抛错', async () => {
+  it('YAML 损坏时跳过该条目，不抛错、也不虚增条目', async () => {
     await makeSkillDir(skillsDir, 'broken-yaml', '---\ndescription: [未闭合\n---\n')
-    const entries = await scanSkillRoot(rootOf())
-    expect(entries).toHaveLength(1)
-    expect(entries[0]).toMatchObject({ name: 'broken-yaml', description: '' })
+    await expect(scanSkillRoot(rootOf())).resolves.toEqual([])
   })
 
   it('readSkillMeta 在文件读不到时返回 undefined', async () => {
@@ -103,10 +100,14 @@ describe('扁平 .md 型 skill', () => {
     expect(entry?.dirRealPath).toBe(await realpath(skillsDir))
   })
 
-  it('无 frontmatter 的扁平 skill 用文件名（去扩展名）当 name', async () => {
+  it('无 frontmatter 的扁平 .md 不算 skill（否则根下的 README.md 会被列成 skill）', async () => {
     await makeFlatSkill(skillsDir, 'bare-flat', '# 裸文件\n')
-    const [entry] = await scanSkillRoot(rootOf())
-    expect(entry).toMatchObject({ dirName: 'bare-flat', name: 'bare-flat', kind: 'flat' })
+    await expect(scanSkillRoot(rootOf())).resolves.toEqual([])
+  })
+
+  it('根下的 README.md 不会被当成 skill', async () => {
+    await writeAt(join(skillsDir, 'README.md'), '# 说明文档，不是 skill\n')
+    await expect(scanSkillRoot(rootOf())).resolves.toEqual([])
   })
 
   it('非 .md 文件不会被当成 skill', async () => {

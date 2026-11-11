@@ -139,9 +139,10 @@ describe('归档重名循环（回归：同一秒多次归档绝不覆盖）', (
     }
 
     expect(results[0]?.renamedTo).toBeUndefined()
-    expect(results[1]?.renamedTo).toBe(`${SUFFIXED}.md`)
-    expect(results[2]?.renamedTo).toBe(`${SUFFIXED}-2.md`)
-    expect(results[3]?.renamedTo).toBe(`${SUFFIXED}-3.md`)
+    // renamedTo 统一不含扩展名，可直接当 dirName 传回 restore
+    expect(results[1]?.renamedTo).toBe(SUFFIXED)
+    expect(results[2]?.renamedTo).toBe(`${SUFFIXED}-2`)
+    expect(results[3]?.renamedTo).toBe(`${SUFFIXED}-3`)
 
     expect((await readdir(archiveDir)).sort()).toEqual(
       ['foo.md', `${SUFFIXED}.md`, `${SUFFIXED}-2.md`, `${SUFFIXED}-3.md`].sort(),
@@ -225,7 +226,7 @@ describe('扁平 .md 型 skill', () => {
     await makeFlatSkill(skillsDir, 'foo', '---\nname: new\n---\n')
 
     const result = await moveToArchive(skillsDir, 'foo', NOW)
-    expect(result.renamedTo).toBe(`${SUFFIXED}.md`)
+    expect(result.renamedTo).toBe(SUFFIXED)
     await expect(exists(join(archiveDir, `${SUFFIXED}.md`))).resolves.toBe(true)
 
     // 还原时去掉后缀：foo@20261111-134501.md → foo.md

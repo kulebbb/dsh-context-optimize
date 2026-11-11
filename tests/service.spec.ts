@@ -466,3 +466,77 @@ describe('错误响应体形状', () => {
     }
   })
 })
+
+describe('审查补测：并发、降级与失效工作区', () => {
+  it('并发归档同一条 skill：只成功一次，档案内容不丢', async () => {
+    const dir = join(agentsHome, 'skills', 'dup-target')
+    await makeSkillDir(join(agentsHome, 'skills'), 'dup-target', '---\nname: dup-target\ndescription: 并发\n---\n唯一内容\n')
+
+    const body = { scope: 'global', rootId: 'user-agents', dirName: 'dup-target' }
+    const [first, second] = await Promise.all([
+      service.handle(post(ROUTES.archive, body)),
+      service.handle(post(ROUTES.archive, body)),
+    ])
+    const statuses = [first.status, second.status].sort()
+    // 一个成功、一个找不到（已被前一个移走）——关键是不能两个都成功导致覆盖
+    expect(statuses).toEqual([200, 404])
+
+    const archived = await exists(join(agentsHome, 'skill-archive', 'dup-target', 'SKILL.md'))
+    expect(archived).toBe(true)
+    expect(await exists(dir)).toBe(false)
+  })
+
+  it('缓存文件结构坏掉（session 为 null）时降级为空缓存，不返回 500', async () => {
+    const brokenCache = join(tmp, 'broken-cache.json')
+    await mkdir(join(tmp), { recursive: true })
+    await (await import('node:fs/promises')).writeFile(
+      brokenCache,
+      JSON.stringify({ version: 2, generatedAt: 0, sessions: { bad: null }, backfill: { state: 'done', done: 1, total: 1 } }),
+      'utf8',
+    )
+    const fresh = new ContextOptimizeService({
+      dshHome,
+      cachePath: brokenCache,
+      workspaceRegistry: { list: () => workspaces },
+      now: () => NOW,
+      logger: { warn: () => undefined },
+    })
+    await fresh.initialize()
+    const overview = await fresh.overview()
+    expect(overview.totals.active).toBeGreaterThan(0)
+    expect((await fresh.handle(get(ROUTES.skills + '?scope=global&state=all'))).status).toBe(200)
+    await fresh.dispose()
+  })
+
+  it('失效工作区不会解析到祖先项目，读写都拒绝', async () => {
+    const projects = await service.projects()
+    const gone = projects.projects.find((project) => project.id === 'gone')
+    expect(gone?.exists).toBe(false)
+    // 关键：不能因为祖先目录有 .git 就把项目根算到祖先上
+    expect(gone?.root).toBe(join(tmp, 'gone-workspace'))
+
+    const read = await service.handle(get(`${ROUTES.skills}?scope=project&workspaceId=gone&state=all`))
+    expect(read.status).toBe(404)
+    expect(((await read.json()) as ErrorPayload).error.code).toBe('not-found')
+
+    const write = await service.handle(
+      post(ROUTES.archive, { scope: 'project', workspaceId: 'gone', rootId: 'project-agents', dirName: 'x' }),
+    )
+    expect(write.status).toBe(404)
+  })
+
+  it('项目级 skill 全归档后，projects 仍报告 archivedCount（界面据此保留入口）', async () => {
+    const before = await service.projects()
+    expect(before.projects.find((project) => project.id === 'w1')?.skillCount).toBe(1)
+
+    const moved = await service.handle(
+      post(ROUTES.archive, { scope: 'project', workspaceId: 'w1', rootId: 'project-dsh', dirName: 'proj-skill' }),
+    )
+    expect(moved.status).toBe(200)
+
+    const after = await service.projects()
+    const project = after.projects.find((entry) => entry.id === 'w1')
+    expect(project?.skillCount).toBe(0)
+    expect(project?.archivedCount).toBe(1)
+  })
+})

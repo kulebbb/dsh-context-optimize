@@ -121,7 +121,8 @@ export function indexUsage(
   now: Date = new Date(),
   cwdUnder?: string,
 ): Map<string, UsageEntry> {
-  const cutoff = toDateKey(now.getTime() - RECENT_WINDOW_MS)
+  // 含今天往前数 30 个自然日：减 29 天再取日期，避免把截止日整天算进去变成 31 天
+  const cutoff = toDateKey(now.getTime() - (RECENT_WINDOW_MS - 86_400_000))
   const index = new Map<string, UsageEntry>()
   for (const record of Object.values(sessions)) {
     if (cwdUnder !== undefined && !isUnder(record.cwd, cwdUnder)) continue

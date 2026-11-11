@@ -15,7 +15,10 @@ import { pathExists } from './workspaces.ts'
 export interface MoveResult {
   /** 移动后的绝对路径。 */
   readonly to: string
-  /** 归档目录里重名时追加的后缀（仅在归档时可能出现）。 */
+  /**
+   * 归档时因重名而改的新名字（**不含扩展名**，可直接当 dirName 用）。
+   * 只返回后缀会让扁平 `.md` 的调用方拼出 `foo@….md.md`，撤销必然失败。
+   */
   readonly renamedTo?: string
 }
 
@@ -78,7 +81,8 @@ export async function moveToArchive(skillsDir: string, dirName: string, now: Dat
       const candidatePath = join(archiveDir, candidate)
       if (!(await pathExists(candidatePath))) {
         target = candidatePath
-        renamedTo = candidate
+        // 对外统一给「不含扩展名的名字」，和 archive/restore 的 dirName 语义保持一致
+        renamedTo = attempt === 1 ? `${stem}${suffix}` : `${stem}${suffix}-${String(attempt)}`
         break
       }
       attempt += 1
@@ -114,8 +118,10 @@ export async function restoreFromArchive(skillsDir: string, dirName: string): Pr
   await mkdir(skillsDir, { recursive: true })
   const target = join(skillsDir, restoredName)
   assertDirectChild(skillsDir, target)
-  if (await pathExists(target)) {
-    throw new OptimizeError('target-exists', `原位已有 ${restoredName}，请先处理冲突`)
+  // 两种形态都要查：`skills/foo` 与 `skills/foo.md` 在 DSH 眼里是同一个 name
+  const conflict = target.endsWith('.md') ? target.slice(0, -3) : `${target}.md`
+  if ((await pathExists(target)) || (await pathExists(conflict))) {
+    throw new OptimizeError('target-exists', `原位已有 ${restoredName.replace(/\.md$/, '')}，请先处理冲突`)
   }
   try {
     await rename(source.path, target)
@@ -133,7 +139,8 @@ export async function restoreFromArchive(skillsDir: string, dirName: string): Pr
 export function stripArchiveSuffix(fileName: string): string {
   const extension = extname(fileName)
   const stem = extension === '' ? fileName : fileName.slice(0, -extension.length)
-  return `${stem.replace(/@\d{8}-\d{6}$/, '')}${extension}`
+  // 第二次及以后的重名会追加 `-2`、`-3`，一起去掉才算回到原名
+  return `${stem.replace(/@\d{8}-\d{6}(?:-\d+)?$/, '')}${extension}`
 }
 
 /** 取错误文本，非 Error 也能读。 */

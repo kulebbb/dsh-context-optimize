@@ -92,6 +92,8 @@ const BACKFILL_CONCURRENCY = 4
 /** 一次扫描的缓存条目。 */
 interface ScanMemo {
   readonly at: number
+  /** 全局 + 所有项目根上出现过的 skill 名，用于判断某个历史调用是否真的「已移除」。 */
+  readonly knownNames: ReadonlySet<string>
   /** 生成这份快照时的频次版本；频次一变就必须重建，否则会拿到「频次还是 0」的旧表。 */
   readonly usageRevision: number
   readonly roots: readonly RootInfo[]
@@ -109,6 +111,13 @@ export class ContextOptimizeService {
    * 让扫描缓存失效——否则面板会短暂显示「有目录但调用次数全是 0」的错表。
    */
   private usageRevision = 0
+  /** 缓存读完之前收到的实时事件先排队，读完再重放，避免被 initialize 覆盖掉。 */
+  private ready = false
+  private readonly pendingEvents: { id: string; cwd: string | null; createdAt?: number; event: SessionEventLike }[] = []
+  /** 按根串行化 move，堵住 check-then-rename 的并发窗口。 */
+  private readonly moveChains = new Map<string, Promise<unknown>>()
+  /** 串行化落盘，避免多个 flush 抢同一个临时文件、用旧快照盖新数据。 */
+  private flushChain: Promise<void> = Promise.resolve()
   private backfillPromise: Promise<void> | undefined
   private saveTimer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
@@ -131,7 +140,12 @@ export class ContextOptimizeService {
 
   /** 读缓存并启动首次回溯（后台，不阻塞任何请求）。 */
   async initialize(): Promise<void> {
-    this.cache = await loadCache(this.deps.cachePath)
+    const loaded = await loadCache(this.deps.cachePath)
+    // 合并而不是覆盖：初始化期间可能已经收下实时事件，直接替换会丢
+    this.cache = { ...loaded, sessions: { ...loaded.sessions } }
+    this.ready = true
+    const queued = this.pendingEvents.splice(0, this.pendingEvents.length)
+    for (const item of queued) this.ingest(item.id, item.cwd, item.createdAt, item.event)
     if (this.cache.backfill.state !== 'done') this.startBackfill()
   }
 
@@ -146,9 +160,13 @@ export class ContextOptimizeService {
   }
 
   /** 收到一条实时会话事件。 */
-  ingest(sessionId: string, cwd: string | null, event: SessionEventLike): void {
+  ingest(sessionId: string, cwd: string | null, createdAt: number | undefined, event: SessionEventLike): void {
+    if (!this.ready) {
+      this.pendingEvents.push({ id: sessionId, cwd, ...(createdAt === undefined ? {} : { createdAt }), event })
+      return
+    }
     const existing = this.cache.sessions[sessionId]
-    const record = existing ?? newSessionRecord(cwd)
+    const record = existing ?? newSessionRecord(cwd, createdAt)
     if (record.cwd === null && cwd !== null) record.cwd = cwd
     const before = record.lastSeq
     foldEvents(record, [event])
@@ -188,7 +206,7 @@ export class ContextOptimizeService {
     const scan = await this.scan()
     const effective = scan.entries.filter((entry) => entry.effective)
     const neverCalled = effective.filter((entry) => entry.calls === 0)
-    const onDisk = new Set<string>()
+    const onDisk = new Set<string>(scan.knownNames)
     for (const entry of scan.entries) onDisk.add(entry.name)
     for (const entry of scan.archived) onDisk.add(entry.name)
     const usageNames = indexUsage(this.cache.sessions, this.now())
@@ -252,6 +270,9 @@ export class ContextOptimizeService {
     }
     const workspace = this.findWorkspace(workspaceId)
     if (workspace === undefined) throw new OptimizeError('not-found', '找不到该工作区')
+    if (!(await pathExists(workspace.path))) {
+      throw new OptimizeError('not-found', '该工作区路径已失效，不能读取或操作它的 skill')
+    }
     const projectRoot = await this.projectRootOf(workspace)
     const roots = projectRoots(projectRoot)
     const usage = indexUsage(this.cache.sessions, this.now(), projectRoot)
@@ -324,10 +345,13 @@ export class ContextOptimizeService {
     }
     const parsed = parseMoveRequest(body)
     const skillsDir = await this.resolveRootDir(parsed)
-    const result =
+    // 同一根上的 move 串行执行：否则两个并发归档都会认为目标不存在，
+    // 扁平 .md 在 POSIX 下会被后一个 rename 静默覆盖。
+    const result = await this.serializeMove(skillsDir, async () =>
       action === 'archive'
         ? await moveToArchive(skillsDir, parsed.dirName, this.now())
-        : await restoreFromArchive(skillsDir, parsed.dirName)
+        : await restoreFromArchive(skillsDir, parsed.dirName),
+    )
     this.memo = undefined
     const payload: MovePayload = {
       ok: true,
@@ -338,6 +362,20 @@ export class ContextOptimizeService {
       ...(result.renamedTo === undefined ? {} : { renamedTo: result.renamedTo }),
     }
     return payload
+  }
+
+  /** 按 key 串行执行一个异步任务。 */
+  private serializeMove<T>(key: string, task: () => Promise<T>): Promise<T> {
+    const previous = this.moveChains.get(key) ?? Promise.resolve()
+    const next = previous.then(task, task)
+    this.moveChains.set(
+      key,
+      next.then(
+        () => undefined,
+        () => undefined,
+      ),
+    )
+    return next
   }
 
   /** 把 (scope, workspaceId?, rootId) 解析成一个可信的根目录。 */
@@ -364,6 +402,9 @@ export class ContextOptimizeService {
     }
     const workspace = this.findWorkspace(workspaceId)
     if (workspace === undefined) throw new OptimizeError('not-found', '找不到该工作区')
+    if (!(await pathExists(workspace.path))) {
+      throw new OptimizeError('not-found', '该工作区路径已失效，不能读取或操作它的 skill')
+    }
     const projectRoot = await this.projectRootOf(workspace)
     const root = projectRoots(projectRoot).find((candidate) => candidate.id === request.rootId)
     if (root === undefined) throw new OptimizeError('unknown-root', `根 ${request.rootId} 当前不可用`)
@@ -377,6 +418,9 @@ export class ContextOptimizeService {
 
   /** 工作区 → 项目根（先解析真实路径，否则会话 cwd 前缀匹配会对不上）。 */
   private async projectRootOf(workspace: WorkspaceLike): Promise<string> {
+    // 路径不存在的工区不能往上找 .git：否则会解析到某个祖先仓库，
+    // 让「失效工作区」也能列出并归档祖先项目的 skill。
+    if (!(await pathExists(workspace.path))) return workspace.path
     return resolveProjectRoot(await realWorkspacePath(workspace.path))
   }
 
@@ -413,7 +457,18 @@ export class ContextOptimizeService {
       archived.push(...(await scanArchiveDir(archiveDirFor(root.path), root.id)))
     }
     archived.sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
-    const memo: ScanMemo = { at, usageRevision: startedRevision, roots: rootInfos, entries, archived }
+    // 项目根上的 skill 也算「还在磁盘上」：只按全局判断会把项目级 skill 误报成已移除
+    const knownNames = new Set<string>()
+    for (const entry of entries) knownNames.add(entry.name)
+    for (const entry of archived) knownNames.add(entry.name)
+    for (const workspace of this.deps.workspaceRegistry?.list() ?? []) {
+      if (!(await pathExists(workspace.path))) continue
+      const projectRoot = await this.projectRootOf(workspace)
+      for (const root of projectRoots(projectRoot)) {
+        for (const entry of await scanSkillRoot(root)) knownNames.add(entry.name)
+      }
+    }
+    const memo: ScanMemo = { at, usageRevision: startedRevision, knownNames, roots: rootInfos, entries, archived }
     // 扫描期间频次变过就只返回这一次、不缓存，下一次重新扫，避免留下错误的表。
     this.memo = startedRevision === this.usageRevision ? memo : undefined
     return memo
@@ -434,7 +489,7 @@ export class ContextOptimizeService {
       this.cache.backfill = { state: 'partial', done: 0, total: 0 }
       return
     }
-    let records: readonly { header: { id: string; cwd?: string; createdAt?: number } }[]
+    let records: readonly { header: { id: string; cwd?: string; createdAt?: number }; live?: boolean }[]
     try {
       records = await query.listSessions()
     } catch (error) {
@@ -442,9 +497,15 @@ export class ContextOptimizeService {
       this.cache.backfill = { state: 'partial', done: 0, total: 0 }
       return
     }
-    const pending = records.filter((record) => this.cache.sessions[record.header.id] === undefined)
+    // 待处理 = 缓存里没有的会话 + 当前仍然 live 的会话（它们可能在插件没运行时又追加了事件）。
+    // 后者是「增量」的实际落点：靠 seq 水位去重，重读不会重复计数。
+    const liveIds = new Set(records.filter((record) => record.live).map((record) => record.header.id))
+    const pending = records.filter(
+      (record) => this.cache.sessions[record.header.id] === undefined || liveIds.has(record.header.id),
+    )
     this.cache.backfill = { state: 'running', done: records.length - pending.length, total: records.length }
     let done = records.length - pending.length
+    let failures = 0
     let index = 0
     const worker = async (): Promise<void> => {
       for (;;) {
@@ -459,12 +520,18 @@ export class ContextOptimizeService {
             this.deps.sessionReadTimeoutMs ?? 30_000,
           )
           const createdAt = (snapshot.session as { createdAt?: number } | null | undefined)?.createdAt ?? record.header.createdAt
-          const usage = newSessionRecord(snapshot.session?.cwd ?? record.header.cwd ?? null, createdAt)
+          // 合并进已有记账而不是替换：实时事件可能已经写进同一条记录
+          const usage =
+            this.cache.sessions[id] ??
+            newSessionRecord(snapshot.session?.cwd ?? record.header.cwd ?? null, createdAt)
+          if (usage.cwd === null) usage.cwd = snapshot.session?.cwd ?? record.header.cwd ?? null
+          if (usage.createdAt === undefined && createdAt !== undefined) usage.createdAt = createdAt
           foldEvents(usage, snapshot.events as readonly SessionEventLike[])
           this.cache.sessions[id] = usage
         } catch (error) {
-          this.deps.logger?.warn?.(`[dsh-context-optimize] 读取会话 ${id} 失败：`, error)
-          this.cache.sessions[id] = newSessionRecord(record.header.cwd ?? null, record.header.createdAt)
+          // 失败时不写空记录：写了就再也不会重试，那个会话的历史会永久显示 0 次。
+          failures += 1
+          this.deps.logger?.warn?.(`[dsh-context-optimize] 读取会话 ${id} 失败，下次启动会重试：`, error)
         }
         done += 1
         this.cache.backfill = { state: 'running', done, total: records.length }
@@ -472,7 +539,12 @@ export class ContextOptimizeService {
     }
     const workers = Array.from({ length: Math.min(BACKFILL_CONCURRENCY, Math.max(1, pending.length)) }, worker)
     await Promise.all(workers)
-    this.cache.backfill = { state: 'done', done: records.length, total: records.length }
+    // 有失败就标 partial，下次启动 initialize 会再跑一遍补齐
+    this.cache.backfill = {
+      state: failures > 0 ? 'partial' : 'done',
+      done: records.length - failures,
+      total: records.length,
+    }
     this.usageRevision += 1
     this.memo = undefined
     await this.flush()
@@ -489,8 +561,13 @@ export class ContextOptimizeService {
     this.saveTimer.unref?.()
   }
 
-  /** 立即落盘。 */
-  private async flush(): Promise<void> {
+  /** 立即落盘；多次调用会串行执行，后一次一定写更新的快照。 */
+  private flush(): Promise<void> {
+    this.flushChain = this.flushChain.then(() => this.writeCache())
+    return this.flushChain
+  }
+
+  private async writeCache(): Promise<void> {
     try {
       await saveCache(this.deps.cachePath, this.cache)
     } catch (error) {

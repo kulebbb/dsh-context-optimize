@@ -39,7 +39,7 @@ interface ProjectRowProps {
 
 function previewTags(t: Translate, project: ProjectEntry): JSX.Element[] {
   const tags = project.preview.map((skill: SkillEntry) => (
-    <span key={skill.dirName} className="dscx-tag dscx-tag-green">
+    <span key={`${skill.rootId}/${skill.dirName}`} className="dscx-tag dscx-tag-green">
       {skill.name}
     </span>
   ))
@@ -90,6 +90,11 @@ function ProjectRow(props: ProjectRowProps): JSX.Element {
       <div className="dscx-ps">
         {project.skillCount > 0 ? previewTags(t, project) : null}
         {project.skillCount > 0 ? <span className="dscx-ps-tokens">{project.approxTokens}t</span> : null}
+        {project.skillCount === 0 && project.archivedCount > 0 ? (
+          <span className="dscx-tag dscx-tag-dim">
+            {t('projects.archivedOnly', { count: project.archivedCount })}
+          </span>
+        ) : null}
       </div>
       <div className="dscx-prow-actions">
         {clickable ? (
@@ -121,8 +126,10 @@ export function ProjectsView(props: ProjectsViewProps): JSX.Element {
   const [showAll, setShowAll] = useState(false)
 
   const projects = payload?.projects ?? []
-  const withSkills = projects.filter((project) => project.skillCount > 0)
-  const rest = projects.filter((project) => project.skillCount === 0)
+  // 有 skill 或有归档的项目都必须能点进去：把最后一个 skill 归档后，
+  // 项目归档箱只在详情页里，如果这里把他归到「无项目级 skill」，用户就再也进不去还原了。
+  const withSkills = projects.filter((project) => project.skillCount > 0 || project.archivedCount > 0)
+  const rest = projects.filter((project) => project.skillCount === 0 && project.archivedCount === 0)
   const total = payload?.total ?? projects.length
 
   let body: JSX.Element

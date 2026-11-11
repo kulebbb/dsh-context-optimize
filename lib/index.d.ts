@@ -29,7 +29,10 @@ interface HostContext {
   inject(services: string[], callback: (scope: Record<string, unknown>) => void): void;
   on(event: 'session/event', listener: (session: {
     id?: unknown;
-    cwd?: unknown;
+    header?: {
+      cwd?: unknown;
+      createdAt?: unknown;
+    };
   }, event: SessionEventLike) => void): () => void;
 }
 /**

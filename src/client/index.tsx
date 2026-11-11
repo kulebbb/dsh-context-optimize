@@ -18,8 +18,13 @@ import { Panel } from './views/Panel.tsx'
 /** 中央面板 id，同时是侧边栏入口 id 与 main 槽位 key，三者必须一致。 */
 export const PANEL_ID = 'context-optimize' as MainPanelId
 
-/** 必需服务：缺任何一个就不注册入口（面板本身依赖槽位与文案）。 */
-export const inject = ['slots', 'locale', 'layout', 'remote', 'remote.session']
+/**
+ * 必需服务：缺任何一个就不注册入口（面板依赖槽位、文案与远程打开能力）。
+ *
+ * 不列 `layout`：本插件不调它的 API（槽位注册由 slots 负责），把没用的服务列为硬依赖
+ * 只会让组合里缺 layout 时整块入口消失。
+ */
+export const inject = ['slots', 'locale', 'remote', 'remote.session']
 
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-context-optimize: dictionaries')

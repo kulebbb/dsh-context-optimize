@@ -5,7 +5,7 @@
  * 绝对路径全部由宿主自己拼。拼完还要过三道检查，防止 `../` 穿越到根外面。
  */
 import { realpath } from 'node:fs/promises'
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { OptimizeError } from '../shared/errors.ts'
 
 /** 目录名长度上限，避免构造出超长路径。 */
@@ -76,13 +76,4 @@ export async function safeRealpath(path: string): Promise<string> {
   } catch {
     return path
   }
-}
-
-/**
- * 取父目录绝对路径（去掉末尾分隔符后再取 dirname）。
- * @param path - 绝对路径。
- * @returns 父目录。
- */
-export function parentDir(path: string): string {
-  return dirname(path.replace(/[\\/]+$/, ''))
 }

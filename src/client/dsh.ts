@@ -4,7 +4,6 @@
  * 照 dsh-output 的路子：只声明真正调用的方法，不把 DSH 的类型包拉成依赖。
  * 每个方法标了来源包，升级 DSH 后按图核对即可：
  *   - locale / slots：client 基础服务；
- *   - layout：`@deepseek-ai/dsh-client-ui-layout`（本插件只用它的槽位体系，不直接调 API）；
  *   - remote.session：`@deepseek-ai/dsh-api-session-controller`（经 typert Remote 包装）。
  */
 

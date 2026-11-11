@@ -21,7 +21,7 @@ export const zh = {
   'error.projectsTitle': '读取工作区失败',
   'error.detailTitle': '读取项目 skill 失败',
   'error.readonlyRoot': '内置 skill 只读，不能归档',
-  'error.targetExists': '归档目录里已有同名条目',
+  'error.targetExists': '目标位置已有同名条目',
   'error.notFound': '目录不存在，可能已经被移动',
   'error.invalidRequest': '请求参数不合法',
   'error.timeout': '请求超时，宿主没有响应',
@@ -69,6 +69,8 @@ export const zh = {
     '统计范围：本机全部 {sessions} 个会话（{from} → {to}）。计的是模型加载该 skill 的次数，你在对话里用 /skill名 直接触发的也计入。',
   'tip.callsPlain':
     '统计范围：本机全部会话。计的是模型加载该 skill 的次数，你在对话里用 /skill名 直接触发的也计入。',
+  'tip.callsProject':
+    '统计范围：本项目目录下发生过的会话（全部历史）。计的是模型加载该 skill 的次数，你在对话里用 /skill名 直接触发的也计入。',
   'tip.last':
     '这条 skill 最后一次被加载的时间。按自然日显示：今天 / 昨天 / N 天前 / N 个月前。从未调用过的一律显示「从未」。',
   'tip.tokens': '该 skill 在会话目录里占的文本量：名字 + 描述，按 3.5 个字符约等于 1 token 估算。',
@@ -94,6 +96,7 @@ export const zh = {
   'projects.subtitle': '{total} 个工作区 · {withSkills} 个有项目级 skill',
   'projects.colWorkspace': '有项目级 skill 的工作区',
   'projects.colSkills': '项目级 skill',
+  'projects.archivedOnly': '已归档 {count} 个',
   'projects.empty': '还没有项目放置了项目级 skill',
   'projects.viewSkills': '查看 skill →',
   'projects.noSkills': '无项目级 skill',
@@ -134,7 +137,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'error.projectsTitle': 'Could not read workspaces',
   'error.detailTitle': 'Could not read this project’s skills',
   'error.readonlyRoot': 'Bundled skills are read-only and cannot be archived',
-  'error.targetExists': 'The archive already contains an entry with this name',
+  'error.targetExists': 'An entry with this name already exists at the target',
   'error.notFound': 'The directory no longer exists — it may have been moved',
   'error.invalidRequest': 'Invalid request',
   'error.timeout': 'The host did not respond in time',
@@ -180,6 +183,8 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
     'The directory this skill came from. Precedence for duplicate names: project .dsh > project .agents > user .dsh > user .agents > bundled read-only.',
   'tip.calls':
     'Scope: all {sessions} sessions on this machine ({from} → {to}). Counts how often the model loaded this skill, including direct /skill-name invocations in the conversation.',
+  'tip.callsProject':
+    'Scope: sessions that ran under this project’s directory (all history). Counts how often the model loaded this skill, including direct /skill-name invocations.',
   'tip.callsPlain':
     'Scope: all sessions on this machine. Counts how often the model loaded this skill, including direct /skill-name invocations in the conversation.',
   'tip.last':
@@ -210,6 +215,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'projects.subtitle': '{total} workspaces · {withSkills} with project-level skills',
   'projects.colWorkspace': 'Workspaces with project-level skills',
   'projects.colSkills': 'Project-level skills',
+  'projects.archivedOnly': '{count} archived',
   'projects.empty': 'No project has added project-level skills yet',
   'projects.viewSkills': 'View skills →',
   'projects.noSkills': 'No project-level skills',

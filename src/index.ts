@@ -30,7 +30,14 @@ interface HostContext {
   logger?: { warn?(...args: unknown[]): void; debug?(...args: unknown[]): void }
   effect(factory: () => (() => void) | void, label?: string): () => void
   inject(services: string[], callback: (scope: Record<string, unknown>) => void): void
-  on(event: 'session/event', listener: (session: { id?: unknown; cwd?: unknown }, event: SessionEventLike) => void): () => void
+  on(
+    event: 'session/event',
+    // 监听器收到的是 Session 实例：id/cwd/createdAt 都在 header 上，实例本身没有 cwd
+    listener: (
+      session: { id?: unknown; header?: { cwd?: unknown; createdAt?: unknown } },
+      event: SessionEventLike,
+    ) => void,
+  ): () => void
 }
 
 /**
@@ -39,7 +46,7 @@ interface HostContext {
  */
 export function apply(ctx: HostContext): void {
   const dshHome = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
-  const cachePath = join(dshHome, 'storages', 'dsh-context-optimize', 'frequency.v1.json')
+  const cachePath = join(dshHome, 'storages', 'dsh-context-optimize', 'frequency.v2.json')
 
   // 可选服务：用 scoped inject 接入，宿主没有该服务时静默降级，而不是整个插件加载失败。
   let sessionQuery: SessionQueryLike | undefined
@@ -92,8 +99,9 @@ export function apply(ctx: HostContext): void {
       ctx.on('session/event', (session, event) => {
         const id = session?.id === undefined ? '' : String(session.id)
         if (id === '') return
-        const cwd = typeof session.cwd === 'string' ? session.cwd : null
-        service.ingest(id, cwd, event)
+        const cwd = typeof session.header?.cwd === 'string' ? session.header.cwd : null
+        const createdAt = typeof session.header?.createdAt === 'number' ? session.header.createdAt : undefined
+        service.ingest(id, cwd, createdAt, event)
       }),
     'dsh-context-optimize: live session events',
   )

@@ -73,7 +73,7 @@ export async function loadCache(path: string): Promise<FrequencyCache> {
     return {
       version: CACHE_VERSION,
       generatedAt: typeof record.generatedAt === 'number' ? record.generatedAt : 0,
-      sessions: record.sessions as Record<string, SessionUsageRecord>,
+      sessions: normalizeSessions(record.sessions),
       backfill: normalizeBackfill(record.backfill),
     }
   } catch {
@@ -90,7 +90,8 @@ export async function loadCache(path: string): Promise<FrequencyCache> {
 export async function saveCache(path: string, cache: FrequencyCache): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
   const pruned = pruneSessions({ ...cache, generatedAt: Date.now() })
-  const tmp = `${path}.${String(process.pid)}.tmp`
+  // 临时名带随机串：并发 flush 时不会互相覆盖同一个临时文件
+  const tmp = `${path}.${String(process.pid)}.${Math.random().toString(36).slice(2, 8)}.tmp`
   await writeFile(tmp, JSON.stringify(pruned), 'utf8')
   await rename(tmp, path)
 }
@@ -118,6 +119,38 @@ export function pruneSessions(cache: FrequencyCache): FrequencyCache {
     if (record !== undefined) kept[id] = record
   }
   return { ...cache, sessions: kept }
+}
+
+/**
+ * 逐条校验会话记账。结构坏的一条只丢自己，不能因为它让整个面板 500——
+ * `indexUsage` 会对 `record.days` 做 Object.entries，null 会让每个请求都炸。
+ *
+ * @param value - 缓存文件里的 sessions 字段。
+ * @returns 只含合法记录的会话表。
+ */
+export function normalizeSessions(value: unknown): Record<string, SessionUsageRecord> {
+  if (typeof value !== 'object' || value === null) return {}
+  const out: Record<string, SessionUsageRecord> = {}
+  for (const [id, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw !== 'object' || raw === null) continue
+    const record = raw as Record<string, unknown>
+    const days = record['days']
+    if (typeof days !== 'object' || days === null || Array.isArray(days)) continue
+    const cleanDays: SessionDays = {}
+    for (const [name, perDay] of Object.entries(days as Record<string, unknown>)) {
+      if (typeof perDay !== 'object' || perDay === null || Array.isArray(perDay)) continue
+      const cleanPerDay: Record<string, number> = {}
+      for (const [day, count] of Object.entries(perDay as Record<string, unknown>)) {
+        if (typeof count === 'number' && Number.isFinite(count) && count > 0) cleanPerDay[day] = count
+      }
+      if (Object.keys(cleanPerDay).length > 0) cleanDays[name] = cleanPerDay
+    }
+    const lastSeq = typeof record['lastSeq'] === 'number' && Number.isFinite(record['lastSeq']) ? record['lastSeq'] : -1
+    const cwd = typeof record['cwd'] === 'string' ? record['cwd'] : null
+    const createdAt = typeof record['createdAt'] === 'number' ? record['createdAt'] : undefined
+    out[id] = { lastSeq, cwd, days: cleanDays, ...(createdAt === undefined ? {} : { createdAt }) }
+  }
+  return out
 }
 
 /** 把任意 backfill 字段归一成合法状态。 */

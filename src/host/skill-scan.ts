@@ -11,7 +11,7 @@ import { homedir } from 'node:os'
 import { basename, extname, join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 import { approxTokens, descriptionChars } from '../shared/catalog.ts'
-import { isRemovableRoot, sourceOfRoot } from '../shared/roots.ts'
+import { displayPath, isRemovableRoot, sourceOfRoot } from '../shared/roots.ts'
 import { safeRealpath } from './paths.ts'
 import type { RootId, SkillEntry, SkillKind } from '../shared/types.ts'
 
@@ -58,9 +58,20 @@ export interface ResolvedRoot {
  * @returns 根列表；内置根缺失时不出现在列表里。
  */
 export function globalRoots(paths: HomePaths): ResolvedRoot[] {
+  const home = homedir()
   const roots: ResolvedRoot[] = [
-    { id: 'user-dsh', path: join(paths.dshHome, 'skills'), display: '~/.dsh/skills', removable: true },
-    { id: 'user-agents', path: join(paths.agentsHome, 'skills'), display: '~/.agents/skills', removable: true },
+    {
+      id: 'user-dsh',
+      path: join(paths.dshHome, 'skills'),
+      display: displayPath(join(paths.dshHome, 'skills'), home),
+      removable: true,
+    },
+    {
+      id: 'user-agents',
+      path: join(paths.agentsHome, 'skills'),
+      display: displayPath(join(paths.agentsHome, 'skills'), home),
+      removable: true,
+    },
   ]
   if (paths.bundledSkillDir !== undefined) {
     roots.push({
@@ -99,6 +110,8 @@ export function projectRoots(projectRoot: string): ResolvedRoot[] {
 interface SkillMeta {
   readonly name: string
   readonly description: string
+  /** frontmatter 里是否真的声明了 name；false 表示这不是一个合法 skill。 */
+  readonly declared: boolean
 }
 
 /**
@@ -118,21 +131,27 @@ export async function readSkillMeta(file: string, fallbackName: string): Promise
   } catch {
     return undefined
   }
+  // 与 DSH 的 parseSkillFile 对齐：没有 frontmatter、YAML 坏、或没有 name 的，
+  // 一律不算 skill。放宽会把 skills 根下的 README.md、坏掉的目录也列进来，
+  // 虚增「从未被调用」并让 token 统计失真。
   const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw)
-  if (match === null) return { name: fallbackName, description: '' }
+  if (match === null) return { name: fallbackName, description: '', declared: false }
   let frontmatter: unknown
   try {
     frontmatter = parseYaml(match[1] ?? '')
   } catch {
-    return { name: fallbackName, description: '' }
+    return { name: fallbackName, description: '', declared: false }
   }
   if (typeof frontmatter !== 'object' || frontmatter === null) {
-    return { name: fallbackName, description: '' }
+    return { name: fallbackName, description: '', declared: false }
   }
   const record = frontmatter as Record<string, unknown>
-  const name = typeof record['name'] === 'string' && record['name'].trim() !== '' ? record['name'].trim() : fallbackName
+  const rawName = record['name']
+  if (typeof rawName !== 'string' || rawName.trim() === '') {
+    return { name: fallbackName, description: '', declared: false }
+  }
   const description = typeof record['description'] === 'string' ? record['description'].trim() : ''
-  return { name, description }
+  return { name: rawName.trim(), description, declared: true }
 }
 
 /**
@@ -174,7 +193,7 @@ export async function scanSkillRoot(root: ResolvedRoot): Promise<ScannedSkill[]>
       continue
     }
     const meta = await readSkillMeta(skillFile, dirName)
-    if (meta === undefined) continue
+    if (meta === undefined || !meta.declared) continue
     const chars = descriptionChars(meta.name, meta.description)
     skills.push({
       dirName,
@@ -219,7 +238,7 @@ export async function scanArchiveDir(archiveDir: string, rootId: RootId): Promis
     if (!isDir && extname(dirent.name) !== '.md') continue
     const skillFile = isDir ? join(childPath, 'SKILL.md') : childPath
     const meta = await readSkillMeta(skillFile, dirName)
-    if (meta === undefined) continue
+    if (meta === undefined || !meta.declared) continue
     const chars = descriptionChars(meta.name, meta.description)
     entries.push({
       dirName,
@@ -238,7 +257,9 @@ export async function scanArchiveDir(archiveDir: string, rootId: RootId): Promis
       calls: 0,
       calls30d: 0,
       lastUsedAt: null,
-      ...(info === undefined ? {} : { archivedAt: new Date(info.mtimeMs).toISOString() }),
+      // 用 ctime 而不是 mtime：move 会保留 mtime（那是 skill 自己的修改时间），
+      // 只有 ctime 会更新成移动时刻，才对得上表头的「归档时间」。
+      ...(info === undefined ? {} : { archivedAt: new Date(info.ctimeMs).toISOString() }),
     })
   }
   return entries.sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? ''))
@@ -260,10 +281,12 @@ async function isFile(path: string): Promise<boolean> {
 }
 
 /** stat 的安全版本，出错返回 undefined。 */
-async function safeStat(path: string): Promise<{ isFile: boolean; isDirectory: boolean; mtimeMs: number } | undefined> {
+async function safeStat(
+  path: string,
+): Promise<{ isFile: boolean; isDirectory: boolean; mtimeMs: number; ctimeMs: number } | undefined> {
   try {
     const info = await stat(path)
-    return { isFile: info.isFile(), isDirectory: info.isDirectory(), mtimeMs: info.mtimeMs }
+    return { isFile: info.isFile(), isDirectory: info.isDirectory(), mtimeMs: info.mtimeMs, ctimeMs: info.ctimeMs }
   } catch {
     return undefined
   }
