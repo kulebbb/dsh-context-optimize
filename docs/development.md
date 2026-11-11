@@ -9,7 +9,7 @@ pnpm check        # typecheck + test + build
 
 - 宿主半 `src/index.ts` + `src/host/**` → 打成 `lib/index.js`（ESM）
 - 浏览器半 `src/client/**` → 打成 `lib/client.js`（CJS，外加 `window.__ModuleLoader__.load(...)` 外壳）
-- 测试 `tests/**`：8 个 spec、146 条用例；全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试 `tests/**`：8 个 spec、153 条用例；全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 
 `pnpm build` 会重写 `lib/`，CI 里有一步 `git diff --exit-code lib` 保证提交的产物和源码一致——改完源码记得一起提交产物。
 
@@ -51,7 +51,7 @@ dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
 
 | 现象 | 先看哪里 |
 | --- | --- |
-| 侧边栏没有入口 | 客户端半要求 `slots` / `locale` / `layout` / `remote` 都在；缺任何一个它会静默跳过，不留死按钮。看 DSH 日志里有没有 `dsh-context-optimize`。 |
+| 侧边栏没有入口 | 客户端半要求 `slots` / `locale` / `remote` / `remote.session` 都在；缺任何一个它会静默跳过，不留死按钮。看 DSH 日志里有没有 `dsh-context-optimize`。 |
 | 入口在但面板空白 | 宿主路由没注册成功（`connection` 服务缺失），面板会显示「服务未就绪」并可重试。 |
 | 频次全是 0 | 首次回溯还没跑完（面板顶部有进度条）；或 `sessionQuery` 服务缺失，此时 `backfill.state` 会是 `partial`。 |
 | 项目页空白 | `workspaceRegistry` 服务缺失。它属于 web 层 bundle，命令行跑 `dsh` 时可能没有。 |
