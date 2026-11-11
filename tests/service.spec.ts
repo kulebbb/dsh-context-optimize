@@ -386,6 +386,32 @@ describe('归档 / 还原（项目范围）', () => {
     await expect(exists(join(projectDir, '.dsh', 'skills', 'proj-skill', 'SKILL.md'))).resolves.toBe(true)
   })
 
+  it('项目 skill 归档后不会被误报成「已移除」（归档是可逆的）', async () => {
+    // 造一条历史调用：归档前它是项目 skill，归档后它仍在磁盘上，只是换了目录。
+    service.ingest('sess-1', projectDir, NOW.getTime(), {
+      type: 'tool/call',
+      seq: 1,
+      time: NOW.getTime(),
+      data: { name: 'skill', arguments: JSON.stringify({ name: 'proj-skill' }) },
+    })
+    expect((await service.overview()).totals.removed).toBe(0)
+
+    const moved = await service.handle(
+      post(ROUTES.archive, { scope: 'project', workspaceId: 'w1', rootId: 'project-dsh', dirName: 'proj-skill' }),
+    )
+    expect(moved.status).toBe(200)
+
+    // 项目归档不进全局的「已归档」计数（那是全局三根的账），但也不能算成「已移除」。
+    const afterArchive = await service.overview()
+    expect(afterArchive.totals.archived).toBe(0)
+    expect(afterArchive.totals.removed).toBe(0)
+
+    const archivedList = (await (
+      await service.handle(get(`${ROUTES.skills}?scope=project&workspaceId=w1&state=archived`))
+    ).json()) as SkillsPayload
+    expect(archivedList.entries.map((entry) => entry.name)).toEqual(['proj-skill'])
+  })
+
   it('项目范围缺 workspaceId → 400 invalid-request', async () => {
     await expectError(
       post(ROUTES.archive, { scope: 'project', rootId: 'project-dsh', dirName: 'proj-skill' }),

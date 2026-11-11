@@ -97,6 +97,8 @@ export const PANEL_CSS = `
 
 .dscx-chips{display:flex;align-items:center;gap:6px;padding-left:12px;
   border-left:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap}
+/* 排序按钮贴着筛选行右端：项目详情头部已经有「打开项目目录」，放头部会挤压路径行 */
+.dscx-sort{margin-left:auto}
 .dscx-chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;
   border-radius:var(--dsw-radius-sm);border:1px solid var(--dsw-alias-border-l2);
   background:transparent;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xxs-12);
@@ -215,13 +217,6 @@ export const PANEL_CSS = `
 .dscx-pmeta b{font:var(--dsw-font-s-14);font-weight:600;color:var(--dsw-alias-label-primary);
   font-variant-numeric:tabular-nums}
 .dscx-dotsep{width:3px;height:3px;border-radius:50%;background:var(--dsw-alias-border-l3);flex:none}
-.dscx-subsec{display:flex;align-items:center;gap:8px;font:var(--dsw-font-xxs-12);
-  color:var(--dsw-alias-label-tertiary);margin-top:2px}
-.dscx-subsec .c{font:var(--dsw-font-xxxs-11);font-family:var(--ds-font-family-code);
-  color:var(--dsw-alias-label-caption)}
-.dscx-emptybox{border:1px dashed var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-md);
-  padding:13px 16px;text-align:center;color:var(--dsw-alias-label-caption);font:var(--dsw-font-xxs-12)}
-
 /* ---------- 页脚备注（例如「另有 N 个已移除」） ---------- */
 .dscx-note{display:flex;align-items:flex-start;gap:7px;font:var(--dsw-font-xxs-12);
   color:var(--dsw-alias-label-caption)}

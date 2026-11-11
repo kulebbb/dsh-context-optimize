@@ -37,7 +37,7 @@ export const zh = {
   'seg.global': '全局',
   'seg.projects': '项目',
 
-  'filter.all': '全部',
+  'filter.all': '生效中',
   'filter.never': '从未被调用',
   'filter.archived': '已归档',
   'filter.neverSummary': '{count} 个从未被调用 · 合计 {tokens}t',
@@ -58,7 +58,7 @@ export const zh = {
   'table.lastUsed': '最近使用',
   'table.tokens': '占用',
   'table.archivedAt': '归档时间',
-  'table.emptyAll': '还没有扫到任何 skill',
+  'table.emptyAll': '还没有扫到生效中的 skill',
   'table.emptyNever': '没有从未被调用过的 skill',
   'table.emptyArchived': '归档箱是空的',
   'table.noDescription': '—',
@@ -111,8 +111,6 @@ export const zh = {
   'detail.skillCountSuffix': ' 个项目级 skill',
   'detail.tokensUnit': ' tokens',
   'detail.callsSuffix': ' 次调用',
-  'detail.archiveBox': '本项目归档箱',
-  'detail.archiveEmpty': '暂无归档',
   'detail.missing': '路径失效',
 
   'toast.archived': '已归档 {name}',
@@ -153,7 +151,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'seg.global': 'Global',
   'seg.projects': 'Projects',
 
-  'filter.all': 'All',
+  'filter.all': 'Active',
   'filter.never': 'Never called',
   'filter.archived': 'Archived',
   'filter.neverSummary': '{count} never called · {tokens}t in total',
@@ -174,7 +172,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'table.lastUsed': 'Last used',
   'table.tokens': 'Size',
   'table.archivedAt': 'Archived at',
-  'table.emptyAll': 'No skills found yet',
+  'table.emptyAll': 'No active skills found yet',
   'table.emptyNever': 'No skill was never called',
   'table.emptyArchived': 'The archive is empty',
   'table.noDescription': '—',
@@ -230,8 +228,6 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'detail.skillCountSuffix': ' project-level skills',
   'detail.tokensUnit': ' tokens',
   'detail.callsSuffix': ' calls',
-  'detail.archiveBox': 'Project archive',
-  'detail.archiveEmpty': 'Nothing archived',
   'detail.missing': 'Path missing',
 
   'toast.archived': 'Archived {name}',

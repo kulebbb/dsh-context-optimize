@@ -12,8 +12,10 @@ progress.md
 docs/01-需求确认.html
 docs/02-项目结构.html
 docs/03-视觉设计.html
+docs/05-归档展示一致性-核对与方案.html
 prototype/index.template.html
 prototype/mock-data.json
+prototype/consistency.html
 
 # 截图只作为本地验收材料；对外汇报文档（docs/04）里已内联，不依赖这些文件
 prototype/screenshots/

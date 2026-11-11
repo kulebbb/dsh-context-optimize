@@ -13,7 +13,7 @@ import type {
   SkillEntry,
   SkillStateFilter,
 } from '../../shared/types.ts'
-import { compareByCalls, compareByTokens } from '../../shared/catalog.ts'
+import { compareByCalls, compareByTokens, totalsOf } from '../../shared/catalog.ts'
 import type { ContextOptimizeApi } from '../api.ts'
 import { OptimizeRequestError } from '../api.ts'
 import type { Translate } from '../dsh.ts'
@@ -274,14 +274,42 @@ export function Panel(props: PanelProps): JSX.Element {
     return [...base].sort(sortBy === 'tokens' ? compareByTokens : compareByCalls)
   }, [filter, archivedEntries, activeEntries, neverEntries, sortBy])
 
-  const detailEntries = useMemo(() => {
-    const list = (projectActive.data?.entries ?? []).filter((entry) => entry.effective)
-    return [...list].sort(compareByCalls)
-  }, [projectActive.data])
-  const detailArchivedEntries = useMemo(
+  // 项目详情与全局页同一套状态模型：生效中 / 从未被调用 / 已归档，互斥切换。
+  const projectActiveEntries = useMemo(
+    () => (projectActive.data?.entries ?? []).filter((entry) => entry.effective),
+    [projectActive.data],
+  )
+  const projectArchivedEntries = useMemo(
     () => sortArchived(projectArchived.data?.entries ?? []),
     [projectArchived.data],
   )
+  const projectNeverEntries = useMemo(
+    () => projectActiveEntries.filter((entry) => entry.calls === 0),
+    [projectActiveEntries],
+  )
+  const projectFilteredEntries = useMemo(() => {
+    if (filter === 'archived') return projectArchivedEntries
+    const base = filter === 'never-called' ? projectNeverEntries : projectActiveEntries
+    return [...base].sort(sortBy === 'tokens' ? compareByTokens : compareByCalls)
+  }, [filter, projectArchivedEntries, projectActiveEntries, projectNeverEntries, sortBy])
+  const projectCounts = useMemo(
+    () => ({
+      active: projectActiveEntries.length,
+      never: projectNeverEntries.length,
+      neverTokens: projectNeverEntries.reduce((sum, entry) => sum + entry.approxTokens, 0),
+      archived: projectArchivedEntries.length,
+    }),
+    [projectActiveEntries, projectArchivedEntries, projectNeverEntries],
+  )
+  // 请求失败且没有数据时不拿空列表算总数：头部显示「—」，别和错误提示一起说成 0。
+  // 首屏还在加载时用项目看板给的汇总兜底，避免数字先闪一下 0。
+  const projectTotals = useMemo(() => {
+    if (projectActive.data === null) {
+      if (projectActive.error !== null) return null
+      return { count: project?.skillCount ?? 0, tokens: project?.approxTokens ?? 0, calls: 0 }
+    }
+    return totalsOf(projectActiveEntries)
+  }, [project, projectActive.data, projectActive.error, projectActiveEntries])
 
   const totals = overview.data?.totals
   const budget = useMemo(() => {
@@ -388,6 +416,8 @@ export function Panel(props: PanelProps): JSX.Element {
   }
 
   const selectView = (next: RangeView): void => {
+    // 点当前已选中的 tab 不做事；否则全局页点「全局」没反应、项目详情点「项目」却被踢回看板。
+    if (next === view) return
     setView(next)
     setProject(null)
   }
@@ -525,12 +555,13 @@ export function Panel(props: PanelProps): JSX.Element {
       <ProjectDetail
         t={t}
         project={project}
-        entries={detailEntries}
-        archivedEntries={detailArchivedEntries}
-        activeLoading={projectActive.loading}
-        activeError={projectActive.error}
-        archivedLoading={projectArchived.loading}
-        archivedError={projectArchived.error}
+        entries={projectFilteredEntries}
+        filter={filter}
+        sortBy={sortBy}
+        counts={projectCounts}
+        totals={projectTotals}
+        loading={filter === 'archived' ? projectArchived.loading : projectActive.loading}
+        error={filter === 'archived' ? projectArchived.error : projectActive.error}
         canOpen={canOpen}
         pendingKey={pendingKey}
         view={view}
@@ -539,6 +570,8 @@ export function Panel(props: PanelProps): JSX.Element {
         onBack={() => setProject(null)}
         onRetry={reloadAll}
         onOpenPath={handleOpenPath}
+        onFilter={setFilter}
+        onToggleSort={() => setSortBy((value) => (value === 'calls' ? 'tokens' : 'calls'))}
         onArchive={(entry) => handleArchive(entry, 'project', project.id)}
         onRestore={(entry) => handleRestore(entry, 'project', project.id)}
         onOpenDir={(entry) => handleOpenPath(entry.dirRealPath)}
