@@ -35,7 +35,7 @@ const SUFFIXED = 'foo@20261111-134501'
 beforeEach(async () => {
   tmp = await makeTmpDir('dco-archive')
   skillsDir = join(tmp, 'agents', 'skills')
-  archiveDir = join(tmp, 'agents', 'skill-archive')
+  archiveDir = join(tmp, 'agents', 'skills-archived')
   await mkdir(skillsDir, { recursive: true })
 })
 
@@ -50,7 +50,7 @@ async function expectCode(promise: Promise<unknown>, code: string): Promise<void
 }
 
 describe('目录型 skill 的归档与还原', () => {
-  it('归档到 skills 目录同级的 skill-archive，源目录消失、内容完整', async () => {
+  it('归档到 skills 目录同级的 skills-archived，源目录消失、内容完整', async () => {
     await makeSkillDir(skillsDir, 'foo', '---\nname: foo\ndescription: 描述\n---\n')
     const result = await moveToArchive(skillsDir, 'foo', NOW)
 
@@ -59,7 +59,7 @@ describe('目录型 skill 的归档与还原', () => {
     await expect(exists(join(archiveDir, 'foo', 'SKILL.md'))).resolves.toBe(true)
     await expect(exists(join(skillsDir, 'foo'))).resolves.toBe(false)
     // 归档箱与 skills 同级，不是建在 skills 里面。
-    await expect(exists(join(skillsDir, 'skill-archive'))).resolves.toBe(false)
+    await expect(exists(join(skillsDir, 'skills-archived'))).resolves.toBe(false)
   })
 
   it('还原能搬回原位', async () => {
@@ -209,7 +209,7 @@ describe('路径穿越', () => {
 })
 
 describe('扁平 .md 型 skill', () => {
-  it('归档后是 skill-archive/foo.md，还原回 skills/foo.md', async () => {
+  it('归档后是 skills-archived/foo.md，还原回 skills/foo.md', async () => {
     await makeFlatSkill(skillsDir, 'foo', '---\nname: flat-foo\n---\n')
     const archived = await moveToArchive(skillsDir, 'foo', NOW)
     expect(archived.to).toBe(join(archiveDir, 'foo.md'))

@@ -47,7 +47,7 @@ export function isRemovableRoot(id: RootId): boolean {
  */
 export function archiveDirFor(skillsDir: string): string {
   const parent = skillsDir.replace(/[\\/]+$/, '').replace(/[\\/][^\\/]+$/, '')
-  return `${parent}/skill-archive`
+  return `${parent}/skills-archived`
 }
 
 /**

@@ -133,7 +133,7 @@ describe('五个端点都返回 200 与合法 JSON', () => {
     expect(body.totals.catalogChars).toBeGreaterThan(0)
     expect(body.totals.catalogTokens).toBeGreaterThan(0)
     expect(['idle', 'running', 'done', 'partial']).toContain(body.backfill.state)
-    expect(body.globalArchiveDir).toBe(join(agentsHome, 'skill-archive'))
+    expect(body.globalArchiveDir).toBe(join(agentsHome, 'skills-archived'))
   })
 
   it('GET skills（全局）：含被压住的条目，且不带项目 skill', async () => {
@@ -143,7 +143,7 @@ describe('五个端点都返回 200 与合法 JSON', () => {
     expect(body.scope).toBe('global')
     expect(body.state).toBe('all')
     expect(body.total).toBe(5)
-    expect(body.archiveDir).toBe(join(agentsHome, 'skill-archive'))
+    expect(body.archiveDir).toBe(join(agentsHome, 'skills-archived'))
     const names = body.entries.map((entry) => entry.name)
     expect(names).toContain('global-dsh-skill')
     expect(names).not.toContain('proj-skill')
@@ -169,7 +169,7 @@ describe('五个端点都返回 200 与合法 JSON', () => {
     expect(body.total).toBe(1)
     expect(body.entries.map((entry) => entry.name)).toEqual(['proj-skill'])
     expect(body.entries[0]?.rootId).toBe('project-dsh')
-    expect(body.archiveDir).toBe(join(realProject, '.dsh', 'skill-archive'))
+    expect(body.archiveDir).toBe(join(realProject, '.dsh', 'skills-archived'))
   })
 
   it('GET skills（全局）state=never-called 只返回 0 次调用的条目', async () => {
@@ -245,12 +245,12 @@ describe('ServiceDeps.home 注入', () => {
         injBundled,
       ])
       expect(overview.roots.every((root) => root.path.startsWith(injected))).toBe(true)
-      expect(overview.globalArchiveDir).toBe(join(injAgents, 'skill-archive'))
+      expect(overview.globalArchiveDir).toBe(join(injAgents, 'skills-archived'))
       expect(overview.globalArchiveDir.startsWith(injected)).toBe(true)
       expect(overview.totals.active).toBe(3)
 
       const skills = await injectedService.skills({ scope: 'global', state: 'all' })
-      expect(skills.archiveDir).toBe(join(injAgents, 'skill-archive'))
+      expect(skills.archiveDir).toBe(join(injAgents, 'skills-archived'))
     } finally {
       await injectedService.dispose()
     }
@@ -273,7 +273,7 @@ describe('ServiceDeps.home 注入', () => {
         join(agentsHome, 'skills'),
         bundledDir,
       ])
-      expect(overview.globalArchiveDir).toBe(join(agentsHome, 'skill-archive'))
+      expect(overview.globalArchiveDir).toBe(join(agentsHome, 'skills-archived'))
     } finally {
       await partial.dispose()
     }
@@ -327,8 +327,8 @@ describe('归档 / 还原闭环（全局范围）', () => {
       ok: true,
       rootId: 'user-agents',
       dirName: 'global-agents-skill',
-      to: join(agentsHome, 'skill-archive', 'global-agents-skill'),
-      archiveDir: join(agentsHome, 'skill-archive'),
+      to: join(agentsHome, 'skills-archived', 'global-agents-skill'),
+      archiveDir: join(agentsHome, 'skills-archived'),
     })
     expect(archived.renamedTo).toBeUndefined()
     await expect(exists(join(agentsHome, 'skills', 'global-agents-skill'))).resolves.toBe(false)
@@ -362,17 +362,34 @@ describe('归档 / 还原闭环（全局范围）', () => {
     // 内置 skill 还在原地。
     await expect(exists(join(bundledDir, 'bundled-skill'))).resolves.toBe(true)
   })
+
+  it('旧名字目录 skill-archive 不再算归档（0.2.0 只认 skills-archived）', async () => {
+    // 改名前的归档箱是历史遗留：不列进「已归档」；有过调用记录的话按「已移除」显示。
+    await makeSkillDir(join(agentsHome, 'skill-archive'), 'legacy-skill', '---\nname: legacy-skill\n---\n')
+    service.ingest('sess-legacy', tmp, NOW.getTime(), {
+      type: 'tool/call',
+      seq: 1,
+      time: NOW.getTime(),
+      data: { name: 'skill', arguments: JSON.stringify({ name: 'legacy-skill' }) },
+    })
+
+    const archived = (await (
+      await service.handle(get(`${ROUTES.skills}?scope=global&state=archived`))
+    ).json()) as SkillsPayload
+    expect(archived.entries).toHaveLength(0)
+    expect((await service.overview()).totals.removed).toBe(1)
+  })
 })
 
 describe('归档 / 还原（项目范围）', () => {
-  it('项目 skill 归档进项目的 .dsh/skill-archive', async () => {
+  it('项目 skill 归档进项目的 .dsh/skills-archived', async () => {
     const response = await service.handle(
       post(ROUTES.archive, { scope: 'project', workspaceId: 'w1', rootId: 'project-dsh', dirName: 'proj-skill' }),
     )
     expect(response.status).toBe(200)
     const body = (await response.json()) as MovePayload
-    expect(body.to).toBe(join(realProject, '.dsh', 'skill-archive', 'proj-skill'))
-    expect(body.archiveDir).toBe(join(realProject, '.dsh', 'skill-archive'))
+    expect(body.to).toBe(join(realProject, '.dsh', 'skills-archived', 'proj-skill'))
+    expect(body.archiveDir).toBe(join(realProject, '.dsh', 'skills-archived'))
 
     const archived = (await (
       await service.handle(get(`${ROUTES.skills}?scope=project&workspaceId=w1&state=archived`))
@@ -532,7 +549,7 @@ describe('审查补测：并发、降级与失效工作区', () => {
     // 一个成功、一个找不到（已被前一个移走）——关键是不能两个都成功导致覆盖
     expect(statuses).toEqual([200, 404])
 
-    const archived = await exists(join(agentsHome, 'skill-archive', 'dup-target', 'SKILL.md'))
+    const archived = await exists(join(agentsHome, 'skills-archived', 'dup-target', 'SKILL.md'))
     expect(archived).toBe(true)
     expect(await exists(dir)).toBe(false)
   })

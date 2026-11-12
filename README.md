@@ -8,7 +8,7 @@
 
 ![dsh-context-optimize 横幅](https://github.com/kulebbb/dsh-context-optimize/releases/download/v0.1.0/banner.png)
 
-> **English.** A Skill manager for the DeepSeek Harness sidebar. It lists every installed skill with its call count, last-used date and estimated context cost, split into global and project scope, and archives or restores a skill by moving its directory into a reversible `skill-archive`.
+> **English.** A Skill manager for the DeepSeek Harness sidebar. It lists every installed skill with its call count, last-used date and estimated context cost, split into global and project scope, and archives or restores a skill by moving its directory into a reversible `skills-archived`.
 
 ## 它解决什么问题
 
@@ -18,7 +18,7 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 
 - **列清楚**：全局（`~/.dsh/skills`、`~/.agents/skills`、App 内置 skill）与项目级（项目根下的 `.dsh/skills`、`.agents/skills`）分开看；
 - **看得懂**：每条显示历史调用次数、最近使用时间、以及它在会话目录里占多少 tokens；
-- **动得了**：一键归档（把目录移进同级的 `skill-archive`，全程不删除任何文件）与一键还原，还能直接打开 skill 所在目录。
+- **动得了**：一键归档（把目录移进同级的 `skills-archived`，全程不删除任何文件）与一键还原，还能直接打开 skill 所在目录。
 
 ## 截图 / Screenshots
 
@@ -51,7 +51,7 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 - 全局 / 项目两个范围分开统计，项目范围按「项目根」聚合（见下方常见问题）；
 - 每条 skill 显示调用次数、最近使用时间、估算上下文占用（名字 + 描述，按 3.5 字符 ≈ 1 token 估算）；
 - 状态筛选互斥三态，带计数；生效中可按调用次数或占用排序；
-- 一键归档 / 还原：归档是把 skill 目录移到同级的 `skill-archive`，DSH 不会再加载它，随时可还原；
+- 一键归档 / 还原：归档是把 skill 目录移到同级的 `skills-archived`，DSH 不会再加载它，随时可还原；
 - 归档后 3 秒内可撤销；目标位置有同名条目时自动改名，不会覆盖；
 - 行尾可直接打开 skill 目录，或在 Finder 中打开项目目录；
 - 内置只读 skill 会被宿主拒绝归档，不依赖界面置灰。
@@ -93,10 +93,22 @@ dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 
 | 范围 | 归档目录 |
 | --- | --- |
-| 全局 | `~/.dsh/skill-archive`、`~/.agents/skill-archive` |
-| 项目 | `<项目根>/.dsh/skill-archive`、`<项目根>/.agents/skill-archive` |
+| 全局 | `~/.dsh/skills-archived`、`~/.agents/skills-archived` |
+| 项目 | `<项目根>/.dsh/skills-archived`、`<项目根>/.agents/skills-archived` |
 
 归档目录和 `skills` 同级，DSH 不会把它当成 skill 再扫到。
+
+> **升级提醒（0.1.x → 0.2.0）**：归档目录名从 `skill-archive` 改成了 `skills-archived`（全局与项目一致）。插件不会自动搬旧目录，也不会删任何文件，所以旧目录里的条目**不会**出现在「已归档」里；其中有过调用记录的会被算成「已移除」，文件其实还在原处。
+>
+> 要接上历史归档，把存在的那几条命令跑一遍即可（`mkdir -p` 是必需的——新目录在第一次归档前不存在，直接 `mv` 会报错；`-n` 保证同名条目不覆盖）：
+>
+> ```bash
+> mkdir -p ~/.agents/skills-archived && mv -n ~/.agents/skill-archive/* ~/.agents/skills-archived/
+> mkdir -p ~/.dsh/skills-archived    && mv -n ~/.dsh/skill-archive/*    ~/.dsh/skills-archived/
+> # 项目级：把 <项目根> 换成你的项目目录，.agents 与 .dsh 各跑一条
+> ```
+>
+> 搬动会把条目的「归档时间」重置成搬动时刻（按 ctime 计），不影响还原。确认旧目录搬空后可以自行删除。
 
 ## 安全说明
 

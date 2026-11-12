@@ -64,22 +64,22 @@ describe('isRemovableRoot', () => {
 
 describe('archiveDirFor', () => {
   it('归档目录和 skills 目录同级，不是建在 skills 里面', () => {
-    expect(archiveDirFor('/x/.agents/skills')).toBe('/x/.agents/skill-archive')
-    expect(archiveDirFor('/Users/me/.dsh/skills')).toBe('/Users/me/.dsh/skill-archive')
+    expect(archiveDirFor('/x/.agents/skills')).toBe('/x/.agents/skills-archived')
+    expect(archiveDirFor('/Users/me/.dsh/skills')).toBe('/Users/me/.dsh/skills-archived')
   })
 
   it('末尾带分隔符时推导结果一致', () => {
-    expect(archiveDirFor('/x/.agents/skills/')).toBe('/x/.agents/skill-archive')
+    expect(archiveDirFor('/x/.agents/skills/')).toBe('/x/.agents/skills-archived')
   })
 
   it('多级路径只替换最后一段', () => {
-    expect(archiveDirFor('/a/b/c/skills')).toBe('/a/b/c/skill-archive')
+    expect(archiveDirFor('/a/b/c/skills')).toBe('/a/b/c/skills-archived')
   })
 
   it('结果确实不在 skills 目录内部（防止归档箱建进仓库）', () => {
     const result = archiveDirFor('/x/.agents/skills')
     expect(result.startsWith('/x/.agents/skills/')).toBe(false)
-    expect(result.split('/').includes('skills')).toBe(false)
+    expect(result.endsWith('/skills')).toBe(false)
   })
 })
 

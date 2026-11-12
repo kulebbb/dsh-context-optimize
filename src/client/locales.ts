@@ -73,7 +73,7 @@ export const zh = {
   'tip.last':
     '这条 skill 最后一次被加载的时间。按自然日显示：今天 / 昨天 / N 天前 / N 个月前。从未调用过的一律显示「从未」。',
   'tip.tokens': '该 skill 在会话目录里占的文本量：名字 + 描述，按 3.5 个字符约等于 1 token 估算。',
-  'tip.archivedAt': '这条 skill 被移出 skills 目录、进入 skill-archive 的时间。点行尾的还原按钮可以放回原位置。',
+  'tip.archivedAt': '这条 skill 被移出 skills 目录、进入 skills-archived 的时间。点行尾的还原按钮可以放回原位置。',
   'tip.symlink': '这是指向别处的软链，归档只移动链接本身，不会影响目标文件。',
   'row.symlink': '软链',
   'note.removed': '另有 {count} 个已移除，仅保留历史调用记录',
@@ -85,7 +85,7 @@ export const zh = {
   'source.bundled': '内置',
 
   'action.openDir': '在 Finder 中打开该 skill 目录',
-  'action.archive': '归档（移到 skill-archive）',
+  'action.archive': '归档（移到 skills-archived）',
   'action.archiveBlocked': '内置 skill 只读，不能归档',
   'action.restore': '还原到 skills 目录',
   'action.openProject': '在 Finder 中打开项目目录',
@@ -188,7 +188,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'tip.tokens':
     'Text this skill occupies in the session catalog: name + description, estimated at 3.5 characters per token.',
   'tip.archivedAt':
-    'When this skill was moved out of skills into skill-archive. Use the restore button at the end of the row to put it back.',
+    'When this skill was moved out of skills into skills-archived. Use the restore button at the end of the row to put it back.',
   'tip.symlink':
     'This is a symlink to another location. Archiving moves only the link itself and leaves the target file untouched.',
   'row.symlink': 'Symlink',
@@ -201,7 +201,7 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
   'source.bundled': 'Bundled',
 
   'action.openDir': 'Open this skill folder in Finder',
-  'action.archive': 'Archive (move to skill-archive)',
+  'action.archive': 'Archive (move to skills-archived)',
   'action.archiveBlocked': 'Bundled skill is read-only and cannot be archived',
   'action.restore': 'Restore to the skills directory',
   'action.openProject': 'Open the project folder in Finder',

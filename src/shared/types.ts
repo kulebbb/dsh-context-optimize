@@ -152,9 +152,9 @@ export interface OverviewPayload {
   /** 频次统计覆盖的会话范围。 */
   readonly corpusRange: CorpusRange
   /**
-   * 全局**主**归档目录的绝对路径（展示用，取 `~/.agents/skill-archive`）。
+   * 全局**主**归档目录的绝对路径（展示用，取 `~/.agents/skills-archived`）。
    *
-   * 与 {@link SkillsPayload.archiveDir} 同理：全局归档列表还会合并 `~/.dsh/skill-archive`。
+   * 与 {@link SkillsPayload.archiveDir} 同理：全局归档列表还会合并 `~/.dsh/skills-archived`。
    */
   readonly globalArchiveDir: string
 }
@@ -175,10 +175,10 @@ export interface SkillsPayload {
   /** 该范围下的总数（按 state 过滤后）。 */
   readonly total: number
   /**
-   * 该范围的**主**归档目录（用于展示与默认落点）；项目范围时是项目自己的 skill-archive。
+   * 该范围的**主**归档目录（用于展示与默认落点）；项目范围时是项目自己的 skills-archived。
    *
-   * 注意：`state=archived` 的列表会合并同范围的多个根（全局 `~/.dsh/skill-archive` +
-   * `~/.agents/skill-archive`，项目 `.dsh/skill-archive` + `.agents/skill-archive`），
+   * 注意：`state=archived` 的列表会合并同范围的多个根（全局 `~/.dsh/skills-archived` +
+   * `~/.agents/skills-archived`，项目 `.dsh/skills-archived` + `.agents/skills-archived`），
    * 所以单值的 archiveDir 不覆盖全部归档位置，不要用它反推每一条的出处。
    */
   readonly archiveDir: string | null

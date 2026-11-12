@@ -192,7 +192,7 @@ describe('上下文字符数与 token 估算', () => {
 
 describe('scanArchiveDir', () => {
   it('扫归档目录：条目 effective=false、带 archivedAt、频次归零', async () => {
-    const archiveDir = join(tmp, 'agents', 'skill-archive')
+    const archiveDir = join(tmp, 'agents', 'skills-archived')
     await makeSkillDir(archiveDir, 'old-skill', '---\nname: old\ndescription: 归档的\n---\n')
     const entries = await scanArchiveDir(archiveDir, 'user-agents')
     expect(entries).toHaveLength(1)

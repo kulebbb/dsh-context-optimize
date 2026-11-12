@@ -1,7 +1,7 @@
 /**
  * 归档 / 还原：真正的目录移动。
  *
- * 全流程**没有删除**。归档 = 把 skill 从 skills 目录搬到同级的 skill-archive；
+ * 全流程**没有删除**。归档 = 把 skill 从 skills 目录搬到同级的 skills-archived；
  * 还原 = 搬回来。所以两个动作天然可逆，失败时也不会丢数据。
  */
 import { mkdir, rename } from 'node:fs/promises'

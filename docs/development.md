@@ -60,7 +60,7 @@ dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
 ## 发布
 
 1. 改版本号 → `pnpm check` → 提交（`lib/` 一起提交，CI 会校验两者一致）。
-2. 打 tag 并推送：`git tag v0.1.0 && git push origin v0.1.0`。
+2. 打 tag 并推送：`git tag v0.2.0 && git push origin v0.2.0`。
 3. GitHub Actions 的 `publish` workflow 在 tag 推送时发布到 npm。它需要仓库 secret `NPM_TOKEN`（npm automation token）；没有配置时该步骤会跳过并打一条提示，不会让 workflow 变红。
 
 也可以本地手动发布：`npm publish --access public`。
@@ -70,7 +70,9 @@ dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
 | 内容 | 路径 |
 | --- | --- |
 | 频次缓存 | `~/.dsh/storages/dsh-context-optimize/frequency.v1.json` |
-| 全局归档箱 | `~/.agents/skill-archive`、`~/.dsh/skill-archive` |
-| 项目归档箱 | `<项目根>/.agents/skill-archive`、`<项目根>/.dsh/skill-archive` |
+| 全局归档箱 | `~/.agents/skills-archived`、`~/.dsh/skills-archived` |
+| 项目归档箱 | `<项目根>/.agents/skills-archived`、`<项目根>/.dsh/skills-archived` |
 
 归档目录与 `skills` **同级**，不会被 DSH 当成 skill 再扫到；全流程没有删除动作，还原就是把目录搬回原位。
+
+归档目录名在 0.2.0 从 `skill-archive` 改为 `skills-archived`（与维护者本机既有目录对齐）。升级时不会自动搬运旧目录：旧条目不再显示，有过调用记录的会计入「另有 N 个已移除」，文件仍原样保留。手动迁移命令见 README「归档箱在哪」。
