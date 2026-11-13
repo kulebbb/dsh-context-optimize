@@ -49,10 +49,10 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 ## 功能
 
 - 全局 / 项目两个范围分开统计，项目范围按「项目根」聚合（见下方常见问题）；
-- 每条 skill 显示调用次数、最近使用时间、估算上下文占用（名字 + 描述，按 3.5 字符 ≈ 1 token 估算）；
+- 每条 skill 显示调用次数、最近使用时间、估算上下文占用（名字 + 描述，再加目录行固定的 8 个字符，按 3.5 字符 ≈ 1 token 估算）；
 - 状态筛选互斥三态，带计数；生效中可按调用次数或占用排序；
 - 一键归档 / 还原：归档是把 skill 目录移到同级的 `skills-archived`，DSH 不会再加载它，随时可还原；
-- 归档后 3 秒内可撤销；目标位置有同名条目时自动改名，不会覆盖；
+- 归档后 3 秒内可撤销；归档遇到同名会自动改名且不覆盖，还原遇到同名则拒绝且不覆盖；
 - 行尾可直接打开 skill 目录，或在 Finder 中打开项目目录；
 - 内置只读 skill 会被宿主拒绝归档，不依赖界面置灰。
 
@@ -73,7 +73,7 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 ```
 
-**装完通常不用重启。** DSH 0.2.2 起支持插件热更新：安装、启用或升级后会自动重新组合，左侧边栏直接出现「Skill 管理」；没出现时先刷新页面，仍没有就重启一次 DSH。热重载会重置面板内部状态（当前筛选、滚动位置），数据不受影响。本包是 bundle（`dsh.bundle` 指向自带的 `cordis.patch.yml`），由插件页负责启用/卸载，不需要手工改 profile。
+**装完通常不用重启。** DSH 0.2.2 起支持插件热更新：安装、启用或升级后会自动重新组合，左侧边栏直接出现「Skill 管理」；没出现时先刷新页面，仍没有就重启一次 DSH。热重载会重置面板内部状态（当前筛选、滚动位置），数据不受影响。本包是 bundle（`package.json` 里 `dsh.bundle.patch` 指向自带的 `cordis.patch.yml`），由插件页负责启用/卸载，不需要手工改 profile。
 
 ## 使用
 
@@ -98,7 +98,7 @@ dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 
 归档目录和 `skills` 同级，DSH 不会把它当成 skill 再扫到。
 
-> **升级提醒（0.1.x → 0.2.0）**：归档目录名从 `skill-archive` 改成了 `skills-archived`（全局与项目一致）。插件不会自动搬旧目录，也不会删任何文件，所以旧目录里的条目**不会**出现在「已归档」里；其中有过调用记录的会被算成「已移除」，文件其实还在原处。
+> **升级提醒（0.1.0 / 0.1.1 → 0.1.2）**：归档目录名从 `skill-archive` 改成了 `skills-archived`（全局与项目一致）。插件不会自动搬旧目录，也不会删任何文件，所以旧目录里的条目**不会**出现在「已归档」里；其中有过调用记录的会被算成「已移除」，文件其实还在原处。
 >
 > 要接上历史归档，把存在的那几条命令跑一遍即可（`mkdir -p` 是必需的——新目录在第一次归档前不存在，直接 `mv` 会报错；`-n` 保证同名条目不覆盖）：
 >
@@ -113,7 +113,7 @@ dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 ## 安全说明
 
 - **全流程没有删除动作**：归档是移动目录，还原是搬回去；
-- 客户端只传根 ID、工作区 ID 和目录名，**绝对路径全部由宿主拼接**并做穿越校验；
+- 客户端只传范围、根 ID、工作区 ID 和目录名，**绝对路径全部由宿主拼接**并做穿越校验；
 - 内置只读 skill 不能被归档，拒绝发生在宿主端，不依赖界面；
 - 「打开目录」走 DSH 官方桌面通道，不自己执行 shell 命令；
 - 宿主只读会话日志里的工具调用事件和工作目录，不读对话正文。
@@ -127,7 +127,7 @@ dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 不会。目录已经移出 `skills` 根，DSH 扫描不到；还原后立刻恢复。
 
 **「项目级 skill」的范围到底怎么算？**
-DSH 会从会话工作目录往上找最近一个带 `.git` 的目录作为项目根，项目级 skill 指项目根下的 `.dsh/skills` 与 `.agents/skills`。所以同一个项目根下的多个工作区会看到同一批项目级 skill。
+DSH 会从会话工作目录往上找最近一个带 `.git` 的目录作为项目根（找不到就用工作区路径本身），项目级 skill 指项目根下的 `.dsh/skills` 与 `.agents/skills`。所以同一个项目根下的多个工作区会看到同一批项目级 skill。
 
 **会改动我的配置或 skill 内容吗？**
 不会。它只移动 skill 目录本身，不修改任何 skill 文件，也不写 DSH 配置。
@@ -152,7 +152,7 @@ pnpm check   # typecheck + test + build
 
 - 宿主半：`src/index.ts` + `src/host/**` → `lib/index.js`（ESM）
 - 浏览器半：`src/client/**` → `lib/client.js`（CJS + `window.__ModuleLoader__` 包装）
-- 测试：`tests/**` 8 个 spec、153 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试：`tests/**` 8 个 spec、154 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 - 本地调试用 `link:` 装进 profile，改完 `pnpm build` 后由热重载换上（通常不用重启；没生效时刷新页面或重启一次）；细节见 [`docs/development.md`](docs/development.md)
 
 ## 反馈
