@@ -62,7 +62,7 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 
 **方式一：插件页**
 
-侧边栏打开「插件」页 → 安装，填入下面任一地址，装完按提示重启 DSH：
+侧边栏打开「插件」页 → 安装，填入下面任一地址：
 
 - npm：`@kulebbb/dsh-context-optimize`
 - GitHub：`https://github.com/kulebbb/dsh-context-optimize`
@@ -73,7 +73,7 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 ```
 
-重启后左侧边栏出现「Skill 管理」入口。本包是 bundle（`dsh.bundle` 指向自带的 `cordis.patch.yml`），由插件页负责启用/卸载，不需要手工改 profile。
+**装完通常不用重启。** DSH 0.2.2 起支持插件热更新：安装、启用或升级后会自动重新组合，左侧边栏直接出现「Skill 管理」；没出现时先刷新页面，仍没有就重启一次 DSH。热重载会重置面板内部状态（当前筛选、滚动位置），数据不受影响。本包是 bundle（`dsh.bundle` 指向自带的 `cordis.patch.yml`），由插件页负责启用/卸载，不需要手工改 profile。
 
 ## 使用
 
@@ -153,7 +153,7 @@ pnpm check   # typecheck + test + build
 - 宿主半：`src/index.ts` + `src/host/**` → `lib/index.js`（ESM）
 - 浏览器半：`src/client/**` → `lib/client.js`（CJS + `window.__ModuleLoader__` 包装）
 - 测试：`tests/**` 8 个 spec、153 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
-- 本地调试用 `link:` 装进 profile，改完 `pnpm build` 再重启 DSH；细节见 [`docs/development.md`](docs/development.md)
+- 本地调试用 `link:` 装进 profile，改完 `pnpm build` 后由热重载换上（通常不用重启；没生效时刷新页面或重启一次）；细节见 [`docs/development.md`](docs/development.md)
 
 ## 反馈
 

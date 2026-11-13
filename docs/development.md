@@ -36,13 +36,13 @@ dsh plugin --profile desktop add "link:/path/to/dsh-context-optimize"
 }
 ```
 
-3. **重启 DSH App**。新增 bundle 只在启动时装配，热重载覆盖不到。
+3. **通常不用重启。** DSH 0.2.2 起 `dsh-hmr` 会监听 profile 与 patch，安装/启用后自动重组合；`dsh-client-hmr` 会把变化同步到已打开的页面。入口没出现时先刷新页面，仍没有就重启一次 DSH 排查。
 
 ### 回滚
 
 ```bash
 dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
-# 再从 package.json 的 bundles 里删掉那一行，重启
+# 再从 package.json 的 bundles 里删掉那一行（热重载会自动卸载；没生效时刷新/重启）
 ```
 
 插件不改任何全局配置，回滚只是删两处引用。
