@@ -3,7 +3,7 @@
  *
  * 侧边栏一直在屏幕上，所以这个 store 由客户端入口创建、活到插件卸载：
  * - 运行中每 2 秒问一次状态，空闲每 20 秒问一次（覆盖「另一个窗口发起分析」）；
- * - 页面切到后台时停表，回来立刻补一次；
+ * - 页面切到后台时降速到 20 秒一次，回到前台立刻补一次；
  * - 「未读」以宿主索引为准（`readAt === null`），不是浏览器本地状态，重启和多窗口都一致；
  * - 「失败」只在本进程内有效，用户打开洞察面板就清掉（宿主那边的失败状态本身也在内存里）。
  */
@@ -35,6 +35,27 @@ export function unreadCountOf(entries: readonly InsightHistoryEntry[]): number {
   return count
 }
 
+/** 存「已关闭的失败提示」的键；值是被关掉的那次运行 id。 */
+const DISMISSED_KEY = 'dsh-context-optimize:dismissed-insight-failure'
+
+/** 读回上次关掉的失败提示；没有或不支持 sessionStorage 时返回 null。 */
+function readDismissed(): string | null {
+  try {
+    return globalThis.sessionStorage?.getItem(DISMISSED_KEY) ?? null
+  } catch {
+    return null
+  }
+}
+
+/** 记住关掉的失败提示。 */
+function writeDismissed(runId: string): void {
+  try {
+    globalThis.sessionStorage?.setItem(DISMISSED_KEY, runId)
+  } catch {
+    // 存不进去就只在本次进程内有效，不影响主流程。
+  }
+}
+
 /** 状态变更时是否值得重渲染侧边栏。 */
 function sameState(a: InsightNavState, b: InsightNavState): boolean {
   return a.running === b.running && a.unread === b.unread && a.failed === b.failed
@@ -46,8 +67,12 @@ export interface InsightNavStore {
   subscribe(listener: () => void): () => void
   /** 报告显示到屏幕上时调用：标已读并刷新未读数。 */
   noteReportShown(id: string): void
-  /** 用户看到了某一次失败时调用；传那次运行的 id，避免把后来的一次也一起吞掉。 */
-  clearFailed(runId?: string | null): void
+  /**
+   * 用户看到了某一次失败时调用。
+   *
+   * `runId` 必填：只有知道「看的是哪一次」，才不会把后来发生的一次失败一起吞掉。
+   */
+  clearFailed(runId: string): void
   /** 手动补一次状态（面板刷新后调用，省一次轮询等待）。 */
   refresh(): void
   dispose(): void
@@ -55,6 +80,29 @@ export interface InsightNavStore {
 
 /** 模块单例：侧边栏组件靠它拿状态，避免把 store 塞进槽位 props。 */
 let current: InsightNavStore | null = null
+
+/** 全局订阅者：store 被替换或销毁时也要让图标重渲染。 */
+const globalListeners = new Set<() => void>()
+
+function notifyGlobal(): void {
+  for (const listener of globalListeners) listener()
+}
+
+/**
+ * 侧边栏组件用的稳定订阅函数。
+ *
+ * 组件在渲染期读模块单例会绑定到「当时那个 store」（首次为 null、热更新会换掉），
+ * 所以对外只暴露这两个身份稳定的函数，内部再委托给当前 store。
+ */
+export function navSubscribe(listener: () => void): () => void {
+  globalListeners.add(listener)
+  return () => globalListeners.delete(listener)
+}
+
+/** 侧边栏组件用的稳定快照函数。 */
+export function navGetSnapshot(): InsightNavState {
+  return current?.getSnapshot() ?? INITIAL
+}
 
 /** 侧边栏组件读取当前 store；没有则返回 null（此时只画静默图标）。 */
 export function getInsightNavStore(): InsightNavStore | null {
@@ -73,9 +121,7 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
   let disposed = false
   let inFlight = false
   /** 已经看过、被用户关掉提示的那次失败；换一次运行才会重新提示。 */
-  let dismissedFailure: string | null = null
-  /** 最近一次问到的运行 id，用来记住「哪一次失败已经被关掉」。 */
-  let lastRunId: string | null = null
+  let dismissedFailure: string | null = readDismissed()
   /** 已经统计过的那份报告；换了 id 说明有新的报告生成。 */
   let lastSeenReportId: string | null = null
 
@@ -83,6 +129,7 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
     if (sameState(state, next)) return
     state = next
     for (const listener of listeners) listener()
+    notifyGlobal()
   }
 
   const schedule = (delay: number): void => {
@@ -94,9 +141,13 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
     timer.unref?.()
   }
 
+  /** 历史请求的序号：只接受最新一次的响应，避免先发后到把新值盖回去。 */
+  let historySeq = 0
+
   const refreshHistory = async (): Promise<void> => {
+    const seq = (historySeq += 1)
     const history = await api.insightHistory().catch(() => null)
-    if (history === null || disposed) return
+    if (history === null || disposed || seq !== historySeq) return
     emit({ ...state, unread: unreadCountOf(history.entries) })
   }
 
@@ -120,7 +171,6 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
     const running = status?.status === 'running'
     const reportId = status?.reportId ?? null
     if (status !== null) {
-      lastRunId = status.runId ?? lastRunId
       emit({
         running,
         unread: state.unread,
@@ -130,6 +180,9 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
     // 出现新的报告 id 就刷新一次未读：即使中途没看到「运行中」，也能亮起未读点。
     if (reportId !== null && reportId !== lastSeenReportId) {
       lastSeenReportId = reportId
+      await refreshHistory()
+    } else if (!running) {
+      // 空闲时也隔一轮拉一次历史：另一个窗口标已读或删了报告，这里的点要跟着消失。
       await refreshHistory()
     }
     schedule(running ? RUNNING_INTERVAL_MS : IDLE_INTERVAL_MS)
@@ -151,11 +204,17 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
       return () => listeners.delete(listener)
     },
     noteReportShown(id) {
-      void api.insightRead(id).catch(() => undefined)
-      void refreshHistory()
+      // 先把「已读」写进宿主，再拉历史：否则 GET 可能读到写入前的索引，
+      // 蓝点就要等到下一次有新报告才消失。
+      if (state.unread > 0) emit({ ...state, unread: state.unread - 1 })
+      void api
+        .insightRead(id)
+        .catch(() => undefined)
+        .then(() => refreshHistory())
     },
     clearFailed(runId) {
-      dismissedFailure = runId ?? lastRunId
+      dismissedFailure = runId
+      writeDismissed(runId)
       emit({ ...state, failed: false })
     },
     refresh() {
@@ -168,6 +227,7 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility)
       listeners.clear()
       if (current === store) current = null
+      notifyGlobal()
     },
   }
 

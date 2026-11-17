@@ -118,14 +118,13 @@ export function InsightView(props: InsightViewProps): JSX.Element {
     getInsightNavStore()?.noteReportShown(reportId)
   }, [reportId])
 
-  // 进面板就意味着看到了失败提示，侧边栏的失败点可以下去了；顺带把状态对齐一次。
+  // 进面板先把状态对齐一次（失败提示不在这里清：只有真看到失败才清，
+  // 否则「运行中进来瞄一眼、稍后这次运行失败」会被误当成看过）。
   useEffect(() => {
-    const nav = getInsightNavStore()
-    nav?.clearFailed(status?.runId ?? null)
-    nav?.refresh()
+    getInsightNavStore()?.refresh()
   }, [])
 
-  // 面板开着的时候失败，也算已经看到。
+  // 面板里已经看到失败，侧边栏的琥珀点可以下去了。
   const failedRunId = status?.status === 'failed' ? status.runId : null
   useEffect(() => {
     if (failedRunId === null) return
@@ -235,14 +234,18 @@ export function InsightView(props: InsightViewProps): JSX.Element {
   }
 
   const openHtml = async (id: string): Promise<void> => {
+    // 导出的 HTML 和面板里那份是同一份内容，打开它也算看过。
+    const seen = (): void => getInsightNavStore()?.noteReportShown(id)
     const known = report?.id === id ? report.htmlPath : null
     if (known !== null) {
       onOpenPath(known)
+      seen()
       return
     }
     try {
       const payload = await api.insightReport(id)
       onOpenPath(payload.htmlPath)
+      seen()
     } catch (cause) {
       setError(messageOf(t, cause, t('insight.reportFailed')))
     }

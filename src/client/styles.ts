@@ -467,10 +467,11 @@ export const PANEL_CSS = `
    不依赖 DSH 的哈希类名，升级后也不容易失效。 */
 .dscx-nav{position:relative;display:inline-flex;align-items:center;justify-content:center}
 
+/* 92% / 8% 是「高光带完全出画」的位置：停在两端时文字看不出残留的蓝边。 */
 @keyframes dscx-nav-sweep{
-  0%{background-position:82% 0}
-  35%{background-position:18% 0}
-  100%{background-position:18% 0}
+  0%{background-position:92% 0}
+  35%{background-position:8% 0}
+  100%{background-position:8% 0}
 }
 @keyframes dscx-nav-breathe{
   0%,100%{opacity:.1;transform:scale(.84)}
@@ -479,6 +480,8 @@ export const PANEL_CSS = `
 }
 
 /* 展开时：文字被一道冷色高光缓慢扫过。
+   注意：这里给文字节点设了 animation，会覆盖 DSH 自己在展开时用的 0.2s 入场动画
+   （panelTitle.wide）。代价是展开瞬间少了那一下淡入，换的是稳定的扫光，值得。
    高光带从文字左外侧走到右外侧：background-size 300% 时，
    高光中心在图像 50% 处，对应 background-position-x 从 82% 到 18%。 */
 button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
@@ -511,16 +514,21 @@ button:has(> span:only-child > .dscx-nav[data-dco-nav="running"]) .dscx-nav::bef
 .dscx-nav-dot{
   position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;
   background:var(--dsw-alias-state-business-primary,#6f9dff);
-  box-shadow:0 0 0 2px var(--dsw-specific-sidebar-fill,#141416);
+  box-shadow:0 0 0 2px var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-base,#1b1b1c));
 }
 .dscx-nav-dot[data-kind="failed"]{background:var(--dsw-alias-state-warn-primary,#c79a5b)}
 
 @media (prefers-reduced-motion:reduce){
+  /* 不做扫光，也不在文字上留蓝色；运行中改由图标的一圈静态柔光表示。 */
   button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
     animation:none;background-image:none;color:inherit;-webkit-text-fill-color:currentColor;
   }
-  button:has(> span:only-child > .dscx-nav[data-dco-nav="running"]) .dscx-nav::before{
-    animation:none;opacity:.3;
+  button:has(svg) .dscx-nav[data-dco-nav="running"]::before{
+    content:"";position:absolute;inset:-7px;border-radius:50%;
+    background:radial-gradient(circle,
+      color-mix(in oklab,var(--dsw-alias-state-business-primary,#7aaaff) 40%,transparent) 0%,
+      transparent 70%);
+    opacity:.3;pointer-events:none;
   }
 }
 `

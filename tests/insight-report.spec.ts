@@ -257,3 +257,64 @@ describe('未读状态', () => {
     expect(index.entries[0]?.readAt).toBe('2026-11-01T10:05:00.000Z')
   })
 })
+
+describe('索引并发写', () => {
+  it('两个报告同时标已读，两边的 readAt 都不丢', async () => {
+    const reports = ['2026-11-17T10-00-00', '2026-11-17T11-00-00']
+    for (const id of reports) {
+      await appendIndex(tmp, {
+        id,
+        startedAt: `2026-11-17T${id.slice(11, 13)}:20:00.000Z`,
+        finishedAt: null,
+        status: 'done',
+        days: 30,
+        sessions: 1,
+        tokens: 10,
+        provider: 'p',
+        model: 'm',
+        durationMs: 1000,
+        failedSessions: 0,
+        readAt: null,
+      })
+    }
+    await Promise.all(reports.map((id, index) => markIndexRead(tmp, id, `2026-11-17T1${String(index)}:30:00.000Z`)))
+    const entries = (await loadIndex(tmp)).entries
+    expect(entries).toHaveLength(2)
+    expect(entries.every((entry) => typeof entry.readAt === 'string')).toBe(true)
+  })
+
+  it('追加历史与标已读并发时，新历史不会被旧快照写没', async () => {
+    await appendIndex(tmp, {
+      id: '2026-11-17T10-00-00',
+      startedAt: '2026-11-17T10:20:00.000Z',
+      finishedAt: '2026-11-17T10:24:00.000Z',
+      status: 'done',
+      days: 30,
+      sessions: 1,
+      tokens: 10,
+      provider: 'p',
+      model: 'm',
+      durationMs: 1000,
+      failedSessions: 0,
+      readAt: null,
+    })
+    const fresh = {
+      id: '2026-11-17T12-00-00',
+      startedAt: '2026-11-17T12:20:00.000Z',
+      finishedAt: '2026-11-17T12:24:00.000Z',
+      status: 'done' as const,
+      days: 30,
+      sessions: 1,
+      tokens: 10,
+      provider: 'p',
+      model: 'm',
+      durationMs: 1000,
+      failedSessions: 0,
+      readAt: null,
+    }
+    await Promise.all([appendIndex(tmp, fresh), markIndexRead(tmp, '2026-11-17T10-00-00', '2026-11-17T13:00:00.000Z')])
+    const entries = (await loadIndex(tmp)).entries
+    expect(entries.map((entry) => entry.id).sort()).toEqual(['2026-11-17T10-00-00', '2026-11-17T12-00-00'])
+    expect(entries.find((entry) => entry.id === '2026-11-17T10-00-00')?.readAt).toBe('2026-11-17T13:00:00.000Z')
+  })
+})

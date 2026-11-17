@@ -6,25 +6,21 @@
  */
 import { useSyncExternalStore } from 'react'
 import type { InsightNavState } from './navState.ts'
-import { getInsightNavStore } from './navState.ts'
+import { navGetSnapshot, navSubscribe } from './navState.ts'
 
 /** 没有 store 时的静态状态，避免重复建对象。 */
 const IDLE: InsightNavState = { running: false, unread: 0, failed: false }
 
 /**
- * 侧边栏入口：DSH 会传 `size`（收起 16 / 展开 18）与 `active`。
+ * 侧边栏入口：DSH 会传 `size`（展开 16 / 收起 18）与 `active`。
  *
  * 外面的 `span.dscx-nav` 是状态钩子：它的 `data-dco-nav` 让样式表能把扫光和未读点
  * 挂到 DSH 自己渲染的那行文字上，不必依赖 DSH 的哈希类名。
  */
 export function SidebarPanelIcon(props: { size?: number; active?: boolean }): JSX.Element {
   const size = props.size ?? 16
-  const store = getInsightNavStore()
-  const state = useSyncExternalStore(
-    store?.subscribe ?? (() => () => undefined),
-    store?.getSnapshot ?? (() => IDLE),
-    () => IDLE,
-  )
+  // 订阅函数身份稳定，内部委托给当前 store：热更新换掉 store 也能跟上。
+  const state = useSyncExternalStore(navSubscribe, navGetSnapshot, () => IDLE)
   const status = state.running ? 'running' : state.failed ? 'failed' : state.unread > 0 ? 'unread' : 'idle'
   return (
     <span className="dscx-nav" data-dco-nav={status}>

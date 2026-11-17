@@ -182,6 +182,9 @@ export async function listRunIds(insightDir: string): Promise<string[]> {
   }
 }
 
+/** 时间字段都缺失的损坏条目用它兜底，避免出现 undefined。 */
+const EPOCH = '1970-01-01T00:00:00.000Z'
+
 /** 读索引；没有或损坏时返回空索引。 */
 export async function loadIndex(insightDir: string): Promise<InsightIndexFile> {
   try {
@@ -200,13 +203,36 @@ export async function loadIndex(insightDir: string): Promise<InsightIndexFile> {
           ? entry.readAt
           : entry.readAt === null
             ? null
-            : (entry.finishedAt ?? entry.startedAt)
+            : (entry.finishedAt ?? entry.startedAt ?? EPOCH)
       entries.push({ ...entry, readAt })
     }
     return { version: 1, entries }
   } catch {
     return { version: 1, entries: [] }
   }
+}
+
+/**
+ * 索引写操作的串行队列（按目录）。
+ *
+ * 索引是「读—改—写」：两个窗口同时标已读、或者刚跑完又有人标已读时，不加锁就会
+ * 后写覆盖先写——丢一次 readAt，甚至把刚追加的历史整条写没。
+ */
+const indexQueues = new Map<string, Promise<unknown>>()
+
+function withIndexLock<T>(insightDir: string, task: () => Promise<T>): Promise<T> {
+  const previous = indexQueues.get(insightDir) ?? Promise.resolve()
+  const run = previous.then(task, task)
+  indexQueues.set(
+    insightDir,
+    run.catch(() => undefined),
+  )
+  return run
+}
+
+/** 临时文件名带随机后缀：并发写不会互相踩到同一个 tmp。 */
+function tempPathOf(target: string): string {
+  return `${target}.${String(process.pid)}.${Math.random().toString(36).slice(2, 10)}.tmp`
 }
 
 /** 写索引；同样先写临时文件再改名。 */
@@ -216,33 +242,39 @@ export async function saveIndex(insightDir: string, entries: readonly InsightHis
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
     .slice(0, MAX_INDEX_ENTRIES)
   const target = join(insightDir, 'index.json')
-  const temp = `${target}.tmp`
+  const temp = tempPathOf(target)
   await writeFile(temp, JSON.stringify({ version: 1, entries: sorted }, null, 2), 'utf8')
   await rename(temp, target)
 }
 
 /** 追加一条索引（同 id 覆盖，新的在前）。 */
-export async function appendIndex(insightDir: string, entry: InsightHistoryEntry): Promise<void> {
-  const index = await loadIndex(insightDir)
-  const rest = index.entries.filter((item) => item.id !== entry.id)
-  await saveIndex(insightDir, [entry, ...rest])
+export function appendIndex(insightDir: string, entry: InsightHistoryEntry): Promise<void> {
+  return withIndexLock(insightDir, async () => {
+    const index = await loadIndex(insightDir)
+    const rest = index.entries.filter((item) => item.id !== entry.id)
+    await saveIndex(insightDir, [entry, ...rest])
+  })
 }
 
 /** 把一条标记为已读；本来就已读时什么都不改。 */
-export async function markIndexRead(insightDir: string, id: string, at: string): Promise<boolean> {
-  const index = await loadIndex(insightDir)
-  const target = index.entries.find((entry) => entry.id === id)
-  if (target === undefined) return false
-  if (target.readAt !== null) return true
-  await saveIndex(
-    insightDir,
-    index.entries.map((entry) => (entry.id === id ? { ...entry, readAt: at } : entry)),
-  )
-  return true
+export function markIndexRead(insightDir: string, id: string, at: string): Promise<boolean> {
+  return withIndexLock(insightDir, async () => {
+    const index = await loadIndex(insightDir)
+    const target = index.entries.find((entry) => entry.id === id)
+    if (target === undefined) return false
+    if (target.readAt !== null) return true
+    await saveIndex(
+      insightDir,
+      index.entries.map((entry) => (entry.id === id ? { ...entry, readAt: at } : entry)),
+    )
+    return true
+  })
 }
 
 /** 从索引里删掉一条。 */
-export async function removeIndexEntry(insightDir: string, id: string): Promise<void> {
-  const index = await loadIndex(insightDir)
-  await saveIndex(insightDir, index.entries.filter((item) => item.id !== id))
+export function removeIndexEntry(insightDir: string, id: string): Promise<void> {
+  return withIndexLock(insightDir, async () => {
+    const index = await loadIndex(insightDir)
+    await saveIndex(insightDir, index.entries.filter((item) => item.id !== id))
+  })
 }
