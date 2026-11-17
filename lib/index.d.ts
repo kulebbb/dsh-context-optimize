@@ -21,6 +21,8 @@ interface HostContext {
       register(route: ConnectionRoute): () => void;
     };
   };
+  /** Cordis 上下文的按名取服务；缺服务时返回 undefined。 */
+  get?<T = unknown>(name: string): T | undefined;
   logger?: {
     warn?(...args: unknown[]): void;
     debug?(...args: unknown[]): void;

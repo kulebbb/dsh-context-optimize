@@ -1,5 +1,5 @@
 /**
- * 宿主（node 半）入口：注册五条认证路由、订阅会话事件做频次增量、启动时读缓存并后台补齐历史。
+ * 宿主（node 半）入口：注册六条认证路由、订阅会话事件做频次增量、启动时读缓存并后台补齐历史。
  *
  * 依赖两个 DSH 宿主服务：
  *   - `connection`：认证路由（与 dsh-output 同一套写法）；
@@ -11,6 +11,7 @@ import { ContextOptimizeService } from './host/service.ts'
 import type { SessionQueryLike, WorkspaceRegistryLike } from './host/service.ts'
 import type { SessionEventLike } from './host/frequency.ts'
 import { ROUTES } from './shared/types.ts'
+import { profileDirOfContext, resolveProfileDir } from './host/release-check.ts'
 
 /** Cordis 函数插件名。 */
 export const name = '@kulebbb/dsh-context-optimize'
@@ -27,6 +28,8 @@ interface ConnectionRoute {
 
 interface HostContext {
   connection: { fetch: { register(route: ConnectionRoute): () => void } }
+  /** Cordis 上下文的按名取服务；缺服务时返回 undefined。 */
+  get?<T = unknown>(name: string): T | undefined
   logger?: { warn?(...args: unknown[]): void; debug?(...args: unknown[]): void }
   effect(factory: () => (() => void) | void, label?: string): () => void
   inject(services: string[], callback: (scope: Record<string, unknown>) => void): void
@@ -61,6 +64,8 @@ export function apply(ctx: HostContext): void {
   const service = new ContextOptimizeService({
     dshHome,
     cachePath,
+    // 宿主进程里以 profileContext 为准；环境变量只在 CLI / 开发场景兜底。
+    profileDir: profileDirOfContext(ctx) ?? resolveProfileDir(process.env, dshHome),
     logger: ctx.logger,
     get sessionQuery() {
       return sessionQuery

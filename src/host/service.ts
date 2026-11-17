@@ -26,6 +26,7 @@ import type {
   SkillEntry,
   SkillsPayload,
   SkillStateFilter,
+  VersionPayload,
 } from '../shared/types.ts'
 import { moveToArchive, restoreFromArchive } from './archive.ts'
 import {
@@ -44,6 +45,7 @@ import {
 import type { FrequencyCache, SessionUsageRecord } from './frequency-cache.ts'
 import { foldEvents, indexUsage, newSessionRecord } from './frequency.ts'
 import type { SessionEventLike, UsageEntry } from './frequency.ts'
+import { ReleaseCheck } from './release-check.ts'
 import { pathExists, realWorkspacePath, resolveProjectRoot } from './workspaces.ts'
 import type { WorkspaceLike } from './workspaces.ts'
 
@@ -78,6 +80,10 @@ export interface ServiceDeps {
   readonly logger?: { warn?(...args: unknown[]): void } | undefined
   /** 单个会话读日志的超时，避免某个坏会话卡住整轮回溯。 */
   readonly sessionReadTimeoutMs?: number | undefined
+  /** 本包所在的 profile 目录，用于判断安装来源；缺失时「新版本」入口不显示。 */
+  readonly profileDir?: string | undefined
+  /** 覆盖版本检查器；测试用。 */
+  readonly versionCheck?: { check(): Promise<VersionPayload> } | undefined
 }
 
 /** 扫描结果的内存缓存时长：面板 5 秒轮询一次，没必要每次都把磁盘读一遍。 */
@@ -121,9 +127,11 @@ export class ContextOptimizeService {
   private backfillPromise: Promise<void> | undefined
   private saveTimer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
+  private readonly versionCheck: { check(): Promise<VersionPayload> }
 
   constructor(deps: ServiceDeps) {
     this.deps = deps
+    this.versionCheck = deps.versionCheck ?? new ReleaseCheck({ profileDir: deps.profileDir })
     const envHome = homePaths()
     const bundled = deps.home?.bundledSkillDir ?? envHome.bundledSkillDir
     this.home = {
@@ -176,6 +184,14 @@ export class ContextOptimizeService {
     this.scheduleSave()
   }
 
+  /**
+   * 版本检查：只有「从 npm 同名安装」且安装源上有更高正式版时才提示；
+   * 其余情况（本地目录 / Git / 查不到 / 超时）一律返回不提示，不抛错。
+   */
+  async version(): Promise<VersionPayload> {
+    return this.versionCheck.check()
+  }
+
   /** 路由入口：按 `request.url` 的 pathname 分发。 */
   async handle(request: Request): Promise<Response> {
     const url = new URL(request.url)
@@ -191,6 +207,8 @@ export class ContextOptimizeService {
           return json(await this.move(request, 'archive'))
         case ROUTES.restore:
           return json(await this.move(request, 'restore'))
+        case ROUTES.version:
+          return json(await this.version())
         default:
           throw new OptimizeError('not-found', `未知端点 ${url.pathname}`)
       }

@@ -15,9 +15,10 @@ import type {
   ProjectsPayload,
   SkillsPayload,
   SkillsQuery,
+  VersionPayload,
 } from '../shared/types.ts'
-import { ROUTES } from '../shared/types.ts'
-import type { ClientContext, RemoteSessionService } from './dsh.ts'
+import { PACKAGE_NAME, ROUTES } from '../shared/types.ts'
+import type { ClientContext, PluginNavigationService, RemoteSessionService } from './dsh.ts'
 
 /** 客户端请求超时：超过这个时间给可重试错误，而不是一直转圈。 */
 export const FETCH_TIMEOUT_MS = 30_000
@@ -43,6 +44,10 @@ export interface ContextOptimizeApi {
   projects(signal?: AbortSignal): Promise<ProjectsPayload>
   archive(request: MoveRequest): Promise<MovePayload>
   restore(request: MoveRequest): Promise<MovePayload>
+  /** 查安装源上有没有更高版本；任何失败都返回「不提示」，由界面静默处理。 */
+  version(signal?: AbortSignal): Promise<VersionPayload>
+  /** 打开 DSH 插件页里本包的详情页（更新在那一版），没有该服务时返回 false。 */
+  openPluginPage(): boolean
   /** 宿主有没有「在系统里打开目录」的能力；false 时界面隐藏该按钮而不是留死按钮。 */
   canOpenPath(): Promise<boolean>
   /** 在系统默认应用里打开目录；返回是否成功。 */
@@ -116,6 +121,10 @@ export function createContextOptimizeApi(ctx: ClientContext): ContextOptimizeApi
       return request<ProjectsPayload>(ROUTES.projects, { method: 'GET' }, signal)
     },
 
+    version(signal) {
+      return request<VersionPayload>(ROUTES.version, { method: 'GET' }, signal)
+    },
+
     archive(body) {
       return request<MovePayload>(
         ROUTES.archive,
@@ -138,6 +147,18 @@ export function createContextOptimizeApi(ctx: ClientContext): ContextOptimizeApi
         },
         undefined,
       )
+    },
+
+    openPluginPage() {
+      try {
+        const navigation = ctx.get?.<PluginNavigationService | null>('pluginNavigation')
+        if (navigation === null || navigation === undefined) return false
+        if (typeof navigation.openBundle !== 'function') return false
+        navigation.openBundle(PACKAGE_NAME)
+        return true
+      } catch {
+        return false
+      }
     },
 
     async canOpenPath() {

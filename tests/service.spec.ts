@@ -1,5 +1,5 @@
 /**
- * 路由层：五个端点、参数校验、错误码映射、归档 / 还原闭环。
+ * 路由层：六个端点（含版本检查）、参数校验、错误码映射、归档 / 还原闭环。
  *
  * 这里不启动真实 DSH：三个 home 路径全指到 os.tmpdir() 下，sessionQuery / workspaceRegistry
  * 用假对象注入。每条错误用例都同时断言 HTTP 状态与响应体里的 code —— 客户端只认 code。
@@ -117,7 +117,7 @@ async function expectError(request: Request, status: number, code: ErrorCode): P
   return body
 }
 
-describe('五个端点都返回 200 与合法 JSON', () => {
+describe('六个端点都返回 200 与合法 JSON', () => {
   it('GET overview', async () => {
     const response = await service.handle(get(ROUTES.overview))
     expect(response.status).toBe(200)

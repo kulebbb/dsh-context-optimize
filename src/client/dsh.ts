@@ -57,10 +57,20 @@ export interface RemoteService {
   session: RemoteSessionService
 }
 
+/**
+ * DSH 插件页提供的跳转服务（0.2.x）：打开插件列表 / 某个包的详情页。
+ * 老版本没有这个服务时，客户端退化成在新标签打开 npm 页面。
+ */
+export interface PluginNavigationService {
+  openBundle(packageName: string): void
+}
+
 export interface ClientContext {
   locale: LocaleService
   slots: SlotsService
   remote?: RemoteService
+  /** Cordis 上下文的按名取服务；缺服务时返回 undefined，不抛错。 */
+  get?<T = unknown>(name: string): T | undefined
   effect(factory: () => (() => void) | void, label?: string): () => void
   inject(services: string[], callback: (scope: ClientContext) => void): void
 }

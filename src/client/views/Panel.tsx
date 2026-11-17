@@ -28,6 +28,7 @@ import { SkillList } from './SkillList.tsx'
 import { entryKey } from './SkillRow.tsx'
 import { StateBlock } from './StateBlock.tsx'
 import { Toast } from './Toast.tsx'
+import { UpdateHint } from './UpdateHint.tsx'
 
 /** 归档时间倒序；同一时间按名字稳定排。 */
 function sortArchived(entries: readonly SkillEntry[]): SkillEntry[] {
@@ -538,8 +539,10 @@ export function Panel(props: PanelProps): JSX.Element {
           <div className="dscx-ph-title">
             <h1 className="dscx-h1">{t('panel')}</h1>
           </div>
-          {filter !== 'all' ? null : (
-            <div className="dscx-ph-acts">
+          {/* 新版本入口与筛选无关：任何状态下都该让用户看到 */}
+          <div className="dscx-ph-acts">
+            <UpdateHint t={t} api={api} />
+            {filter !== 'all' ? null : (
               <button
                 type="button"
                 className="dscx-btn dscx-btn-sm"
@@ -547,8 +550,8 @@ export function Panel(props: PanelProps): JSX.Element {
               >
                 {sortBy === 'tokens' ? t('sort.byTokens') : t('sort.byCalls')}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         {body}
       </>
@@ -560,6 +563,7 @@ export function Panel(props: PanelProps): JSX.Element {
     content = (
       <ProjectDetail
         t={t}
+        api={api}
         project={project}
         entries={projectFilteredEntries}
         filter={filter}
@@ -587,6 +591,7 @@ export function Panel(props: PanelProps): JSX.Element {
     content = (
       <ProjectsView
         t={t}
+        api={api}
         payload={projects.data}
         loading={projects.loading}
         error={projects.error}

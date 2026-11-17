@@ -36,6 +36,21 @@ export const PANEL_CSS = `
 .dscx-btn:disabled{opacity:.4;cursor:not-allowed}
 .dscx-btn:disabled:hover{background:transparent}
 
+/* ---------- 新版本入口：胶囊 + 悬停提示 ---------- */
+.dscx-update{position:relative;display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;
+  border:1px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;
+  color:var(--dsw-alias-label-primary);font:var(--dsw-font-xxs-12);white-space:nowrap}
+.dscx-update:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l3)}
+.dscx-update:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
+.dscx-update-v{font-family:var(--ds-font-family-code);color:var(--dsw-alias-state-business-primary)}
+.dscx-update-tip{position:absolute;top:calc(100% + 8px);right:0;z-index:5;width:max-content;max-width:280px;
+  padding:7px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm);
+  background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);
+  font:var(--dsw-font-xxs-12);line-height:1.5;text-align:left;white-space:normal;
+  box-shadow:var(--dsw-shadow-lv3);opacity:0;transform:translateY(-2px);pointer-events:none;
+  transition:opacity var(--ds-transition-duration-fast) var(--ds-ease-in-out),transform var(--ds-transition-duration-fast) var(--ds-ease-in-out)}
+.dscx-update:hover .dscx-update-tip,.dscx-update:focus-visible .dscx-update-tip{opacity:1;transform:none}
+
 /* ---------- 回溯进度条 ---------- */
 .dscx-progress{display:flex;flex-direction:column;gap:8px;padding:12px 16px;flex:none;
   border:1px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);

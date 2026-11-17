@@ -4,8 +4,11 @@
  * 这里只放类型与纯常量，不 import 任何 node 内置模块，客户端 bundle 也能安全引用。
  */
 
-/** 路由前缀；五个端点都是 `${ROUTE_PREFIX}.<action>` 的形式。 */
+/** 路由前缀；六个端点都是 `${ROUTE_PREFIX}.<action>` 的形式。 */
 export const ROUTE_PREFIX = '/api/context-optimize'
+
+/** 本包的 npm 包名：宿主查安装来源、客户端跳插件页版本区都用它。 */
+export const PACKAGE_NAME = '@kulebbb/dsh-context-optimize'
 
 /** 面板会用到的全部端点（相对路径，客户端直接 fetch）。 */
 export const ROUTES = {
@@ -14,9 +17,29 @@ export const ROUTES = {
   projects: `${ROUTE_PREFIX}.projects`,
   archive: `${ROUTE_PREFIX}.archive`,
   restore: `${ROUTE_PREFIX}.restore`,
+  version: `${ROUTE_PREFIX}.version`,
 } as const
 
 export type RouteName = keyof typeof ROUTES
+
+/**
+ * 本包在 profile 里的安装来源，决定要不要给「新版本」入口。
+ *
+ * 只有 `registry` 能用 DSH 插件页的应用内更新；`link:` / `file:` / Git 都会被
+ * 插件管理器拒绝，所以这些情况一律不提示，避免把用户带到没有更新按钮的页面。
+ */
+export type InstallSource = 'registry' | 'other' | 'unknown'
+
+/** `/version` 的载荷：面板据此决定是否显示「新版本 vX」。 */
+export interface VersionPayload {
+  /** 当前运行的插件版本；读不到时为空串。 */
+  readonly current: string
+  /** 安装源上的最新正式版；未检查或检查失败时为 null。 */
+  readonly latest: string | null
+  /** 是否显示「新版本」入口：来源是 registry、最新版更高、且声明了 dsh.bundle。 */
+  readonly updateAvailable: boolean
+  readonly installSource: InstallSource
+}
 
 /** 两个范围维度：全局 / 项目。 */
 export type RootScope = 'global' | 'project'

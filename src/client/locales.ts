@@ -33,6 +33,9 @@ export const zh = {
   'sort.byCalls': '排序：按调用次数',
   'sort.byTokens': '排序：按占用',
 
+  'update.label': '新版本',
+  'update.tip': '发现新版本 v{version}，点击前往插件页更新',
+
   'seg.global': '全局',
   'seg.projects': '项目',
 
@@ -145,6 +148,9 @@ export const en: Record<ContextOptimizeLocaleKey, string> = {
 
   'sort.byCalls': 'Sort: by calls',
   'sort.byTokens': 'Sort: by tokens',
+
+  'update.label': 'Update',
+  'update.tip': 'Version v{version} is available — open the Plugins page to update',
 
   'seg.global': 'Global',
   'seg.projects': 'Projects',

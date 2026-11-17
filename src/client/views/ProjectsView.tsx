@@ -5,17 +5,20 @@
  */
 import { useState } from 'react'
 import type { ProjectEntry, ProjectsPayload, SkillEntry } from '../../shared/types.ts'
+import type { ContextOptimizeApi } from '../api.ts'
 import type { Translate } from '../dsh.ts'
 import { errorMessage } from '../format.ts'
 import { FolderIcon } from '../icons.tsx'
 import { SegNav } from './SegNav.tsx'
 import type { RangeView } from './SegNav.tsx'
 import { StateBlock } from './StateBlock.tsx'
+import { UpdateHint } from './UpdateHint.tsx'
 
 const PROJECT_COLUMNS = 'minmax(0,1fr) 230px 118px'
 
 export interface ProjectsViewProps {
   t: Translate
+  api: ContextOptimizeApi
   payload: ProjectsPayload | null
   loading: boolean
   error: string | null
@@ -122,7 +125,7 @@ function ProjectRow(props: ProjectRowProps): JSX.Element {
 }
 
 export function ProjectsView(props: ProjectsViewProps): JSX.Element {
-  const { t, payload, loading, error, canOpen, view, onSelectView, onRetry, onOpenProject, onOpenPath } = props
+  const { t, api, payload, loading, error, canOpen, view, onSelectView, onRetry, onOpenProject, onOpenPath } = props
   const [showAll, setShowAll] = useState(false)
 
   const projects = payload?.projects ?? []
@@ -184,6 +187,9 @@ export function ProjectsView(props: ProjectsViewProps): JSX.Element {
         <div className="dscx-ph-title">
           <h1 className="dscx-h1">{t('projects.title')}</h1>
           <p className="dscx-sub">{t('projects.subtitle', { total, withSkills: withSkills.length })}</p>
+        </div>
+        <div className="dscx-ph-acts">
+          <UpdateHint t={t} api={api} />
         </div>
       </div>
       <SegNav t={t} view={view} onSelect={onSelectView} />

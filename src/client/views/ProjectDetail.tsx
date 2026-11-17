@@ -7,12 +7,14 @@
  * 数字全部区分「未知」与「零」：拿不到数据时显示「—」，不拿空列表算 0。
  */
 import type { ProjectEntry, SkillEntry, SkillStateFilter } from '../../shared/types.ts'
+import type { ContextOptimizeApi } from '../api.ts'
 import type { Translate } from '../dsh.ts'
 import { formatNumber } from '../format.ts'
 import { ChevronLeftIcon, FolderIcon } from '../icons.tsx'
 import { SegNav } from './SegNav.tsx'
 import type { RangeView } from './SegNav.tsx'
 import { SkillList } from './SkillList.tsx'
+import { UpdateHint } from './UpdateHint.tsx'
 
 /** 项目页三个筛选态各自的数量；null 表示还没拿到数据，界面显示「—」。 */
 export interface ProjectCounts {
@@ -31,6 +33,7 @@ export interface ProjectTotals {
 
 export interface ProjectDetailProps {
   t: Translate
+  api: ContextOptimizeApi
   project: ProjectEntry
   /** 当前筛选态下的条目（Panel 已按状态过滤并排好序）。 */
   entries: readonly SkillEntry[]
@@ -60,7 +63,7 @@ export interface ProjectDetailProps {
 const DASH = '—'
 
 export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
-  const { t, project, entries, filter, sortBy, counts, totals, loading, error, canOpen, pendingKey, view, callsTip } =
+  const { t, api, project, entries, filter, sortBy, counts, totals, loading, error, canOpen, pendingKey, view, callsTip } =
     props
   const { onSelectView, onBack, onRetry, onOpenPath, onFilter, onToggleSort } = props
   const { onArchive, onRestore, onOpenDir } = props
@@ -117,6 +120,7 @@ export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
           </div>
         </div>
         <div className="dscx-ph-acts">
+          <UpdateHint t={t} api={api} />
           <button
             type="button"
             className="dscx-btn dscx-btn-sm"
