@@ -26,7 +26,7 @@ import type {
 import { OptimizeError, STATUS_BY_CODE, normalizeError } from '../../shared/errors.ts'
 import { ROUTES } from '../../shared/types.ts'
 import type { ErrorPayload } from '../../shared/types.ts'
-import { aggregateReport, labelSession } from './analyze.ts'
+import { aggregateReport, labelSession, outputLimitOf } from './analyze.ts'
 import type { AggregateInput, InsightModelSelection, LlmLike } from './analyze.ts'
 import { collectCorpus } from './collect.ts'
 import type { SessionSource } from './collect.ts'
@@ -438,6 +438,8 @@ export class InsightService {
       const source = this.deps.sessionQuery
       const llm = this.deps.llm
       if (source === undefined || llm === undefined) throw new Error('服务未就绪')
+      // 模型能写多少 token 由它自己说了算；传超了 provider 会直接拒绝。
+      const outputLimit = await outputLimitOf(llm, selection)
 
       this.beginPhase(run, 'collect', 0)
       const collect = await collectCorpus({
@@ -474,7 +476,7 @@ export class InsightService {
         if (run.controller.signal.aborted) throw new Error('已取消')
         run.current = session.title
         try {
-          const labelled = await labelSession(llm, selection, session, run.controller.signal)
+          const labelled = await labelSession(llm, selection, session, run.controller.signal, outputLimit)
           facets.set(session.id, labelled.facet)
           run.inputTokens += labelled.inputTokens
           run.outputTokens += labelled.outputTokens
@@ -516,6 +518,7 @@ export class InsightService {
           projects: collect.projects.length,
         },
         run.controller.signal,
+        outputLimit,
       )
       run.inputTokens += aggregate.inputTokens
       run.outputTokens += aggregate.outputTokens

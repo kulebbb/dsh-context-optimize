@@ -57,15 +57,15 @@ function makeSource(): SessionSource {
   }
 }
 
-/** 汇总 JSON；sessionIds 必须来自真实会话。 */
+/** 汇总 JSON；sessions 里的编号必须来自真实会话。 */
 const AGGREGATE = {
   glance: { working: '先写约束', friction: '需求分几次说', next: '加一条复述规则' },
   frictions: [
     {
       title: '需求分几次说全',
       detail: '方向到第三轮才发现不对',
-      sessionIds: ['s1', 's2'],
-      examples: [{ sessionId: 's1', quote: '不是这个意思' }],
+      sessions: [1, 2],
+      examples: [{ n: 1, quote: '不是这个意思' }],
     },
   ],
   wins: [{ title: '先写设计约束', detail: '返工更少' }],
