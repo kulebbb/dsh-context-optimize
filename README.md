@@ -69,11 +69,15 @@ DSH 每次开新会话，都会把「所有 skill 的名字和一句话介绍」
 @kulebbb/dsh-context-optimize
 ```
 
-**方式二：CLI**
+**方式二：CLI（仅非桌面 profile）**
 
 ```bash
-dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
+dsh plugin --profile <你的 profile 名> add @kulebbb/dsh-context-optimize
 ```
+
+> **桌面端不能用 CLI 装**：`desktop` profile 由应用独占管理，命令行会直接报
+> `profile "desktop" is managed exclusively by the Electron application`。
+> 桌面端请走上面的插件页。
 
 > GitHub 地址（`https://github.com/kulebbb/dsh-context-optimize`）也能装，但**不能应用内一键更新**——插件管理器只对「npm 同名安装」和「锁定到具体提交的 Git 安装」提供更新。想省心就用 npm。
 

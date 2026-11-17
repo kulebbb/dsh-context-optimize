@@ -17,9 +17,18 @@ pnpm check        # typecheck + test + build
 
 DSH 的插件是以「profile 里的一条 bundle」形式加载的，和 `@kulebbb/dsh-output` 同一套做法。
 
+桌面端（`desktop` profile）由应用独占管理，**命令行改不了它**——`dsh plugin --profile desktop add ...` 会报
+`profile "desktop" is managed exclusively by the Electron application`。本地开发装进去用插件页：
+
 ```bash
-# 1) 以 link 方式加进 profile（把路径换成你的工程目录）
-dsh plugin --profile desktop add "link:/path/to/dsh-context-optimize"
+# 1) 插件页「安装」时把目标填成本地仓库的绝对路径（等价于 link: 安装），
+#    或者让 agent 的插件管理器执行 install_bundle；不要用 dsh plugin 改 desktop。
+```
+
+非桌面 profile（例如 Web 版用的）仍然可以用 CLI：
+
+```bash
+dsh plugin --profile <你的 profile 名> add "link:/path/to/dsh-context-optimize"
 ```
 
 ```jsonc
@@ -40,10 +49,11 @@ dsh plugin --profile desktop add "link:/path/to/dsh-context-optimize"
 
 ### 回滚
 
-```bash
-dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
-# 再从 package.json 的 bundles 里删掉那一行（热重载会自动卸载；没生效时刷新/重启）
-```
+在插件页卸载（或让插件管理器 `remove_bundle`），profile 里的依赖与 bundles 条目会一起清掉；
+非桌面 profile 也可以用 CLI：`dsh plugin --profile <你的 profile 名> remove @kulebbb/dsh-context-optimize`。
+
+> 卸载时如果 pnpm 走的是 `registry.npmjs.org` 而网络不通，会卡在依赖校验上（本项目实际遇到过，
+> 报 `ERR_PNPM_META_FETCH_FAIL`）。可以给该 profile 的 `.npmrc` 临时指一个可用镜像源。
 
 插件不改任何全局配置，回滚只是删两处引用。
 
