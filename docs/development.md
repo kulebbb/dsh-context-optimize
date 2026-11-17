@@ -9,7 +9,7 @@ pnpm check        # typecheck + test + build
 
 - 宿主半 `src/index.ts` + `src/host/**` → 打成 `lib/index.js`（ESM）
 - 浏览器半 `src/client/**` → 打成 `lib/client.js`（CJS，外加 `window.__ModuleLoader__.load(...)` 外壳）
-- 测试 `tests/**`：16 个 spec、242 条用例；全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试 `tests/**`：17 个 spec、245 条用例；全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 
 `pnpm build` 会重写 `lib/`，CI 里有一步 `git diff --exit-code lib` 保证提交的产物和源码一致——改完源码记得一起提交产物。
 

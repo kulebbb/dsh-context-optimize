@@ -40,6 +40,21 @@ function scopeLabel(t: Translate, days: number | null): string {
   return `${String(days)} ${t('insight.scopeDays')}`
 }
 
+/**
+ * 状态接口失败的文案。
+ *
+ * 404 在 DSH 里基本只有一个原因：宿主进程还是旧版本，没有注册洞察路由
+ * （客户端半会热更新，宿主半只在启动时加载）。这时给通用文案会让人以为是自己操作错了。
+ */
+export function statusErrorText(t: Translate, cause: unknown): string {
+  if (cause instanceof OptimizeRequestError) {
+    if (cause.status === 404) return t('insight.hostStale')
+    if (cause.code === 'busy') return t('insight.busy')
+    return errorMessage(t, cause.code)
+  }
+  return t('insight.loadFailed')
+}
+
 /** 请求错误 → 文案。 */
 function messageOf(t: Translate, error: unknown, fallback: string): string {
   if (error instanceof OptimizeRequestError) {
@@ -106,7 +121,7 @@ export function InsightView(props: InsightViewProps): JSX.Element {
         setStatusError(null)
       })
       .catch((cause: unknown) => {
-        if (alive) setStatusError(messageOf(t, cause, t('insight.loadFailed')))
+        if (alive) setStatusError(statusErrorText(t, cause))
       })
     void refreshHistory()
     void api
@@ -134,10 +149,11 @@ export function InsightView(props: InsightViewProps): JSX.Element {
         .then((value) => {
           pollFailures.current = 0
           setStatus(value)
+          setStatusError(null)
         })
-        .catch(() => {
+        .catch((cause: unknown) => {
           pollFailures.current += 1
-          if (pollFailures.current >= 5) setStatusError(t('insight.loadFailed'))
+          if (pollFailures.current >= 5) setStatusError(statusErrorText(t, cause))
         })
     }, 1500)
     return () => clearInterval(timer)
