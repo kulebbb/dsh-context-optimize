@@ -77,6 +77,7 @@ dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 > GitHub 地址（`https://github.com/kulebbb/dsh-context-optimize`）也能装，但**不能应用内一键更新**——插件管理器只对「npm 同名安装」和「锁定到具体提交的 Git 安装」提供更新。想省心就用 npm。
 
 **装完通常不用重启。** DSH 0.2.2 起支持插件热更新：安装、启用或升级后会自动重新组合，左侧边栏直接出现「Skill 管理」；没出现时先刷新页面，仍没有就重启一次 DSH。热重载会重置面板内部状态（当前筛选、滚动位置），数据不受影响。本包是 bundle（`package.json` 里 `dsh.bundle.patch` 指向自带的 `cordis.patch.yml`），由插件页负责启用/卸载，不需要手工改 profile。
+
 ## 更新
 
 从 npm 安装的用户可以原地更新，不用卸载重装、通常也不用重启：
@@ -167,7 +168,7 @@ pnpm check   # typecheck + test + build
 
 - 宿主半：`src/index.ts` + `src/host/**` → `lib/index.js`（ESM）
 - 浏览器半：`src/client/**` → `lib/client.js`（CJS + `window.__ModuleLoader__` 包装）
-- 测试：`tests/**` 8 个 spec、154 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试：`tests/**` 12 个 spec、188 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 - 本地调试用 `link:` 装进 profile，改完 `pnpm build` 后由热重载换上（通常不用重启；没生效时刷新页面或重启一次）；细节见 [`docs/development.md`](docs/development.md)
 
 ## 反馈
