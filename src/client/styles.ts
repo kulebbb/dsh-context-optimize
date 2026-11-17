@@ -460,4 +460,67 @@ export const PANEL_CSS = `
   .dscx-progress-fill{transition:none}
   .dscx-tip{transition:none}
 }
+
+/* ===== 侧边栏入口：运行中扫光 / 未读点 / 收起态柔光 =====
+   侧边栏那行是 DSH 自己渲染的，我们只有一个图标节点在里面。
+   所以用「结构选择器 + :has()」从图标反选到整行，再选中它渲染的文字节点，
+   不依赖 DSH 的哈希类名，升级后也不容易失效。 */
+.dscx-nav{position:relative;display:inline-flex;align-items:center;justify-content:center}
+
+@keyframes dscx-nav-sweep{
+  0%{background-position:82% 0}
+  35%{background-position:18% 0}
+  100%{background-position:18% 0}
+}
+@keyframes dscx-nav-breathe{
+  0%,100%{opacity:.1;transform:scale(.84)}
+  35%{opacity:.72;transform:scale(1.06)}
+  64%{opacity:.16;transform:scale(.92)}
+}
+
+/* 展开时：文字被一道冷色高光缓慢扫过。
+   高光带从文字左外侧走到右外侧：background-size 300% 时，
+   高光中心在图像 50% 处，对应 background-position-x 从 82% 到 18%。 */
+button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
+  /* 文字本色不动，只让扫过的那一段变成浅冷蓝（品牌色在深色主题下就是 #7aaaff） */
+  --dscx-sweep-base:var(--dsw-alias-label-primary);
+  --dscx-sweep-band:var(--dsw-alias-state-business-primary,#7aaaff);
+  background-image:linear-gradient(100deg,
+    var(--dscx-sweep-base) 0%,var(--dscx-sweep-base) 40%,
+    var(--dscx-sweep-band) 50%,
+    var(--dscx-sweep-base) 60%,var(--dscx-sweep-base) 100%);
+  background-size:300% 100%;
+  background-repeat:no-repeat;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+  animation:dscx-nav-sweep 6s cubic-bezier(.45,0,.55,1) infinite;
+}
+
+/* 收起时没有文字可扫：图标自己缓慢呼吸 */
+button:has(> span:only-child > .dscx-nav[data-dco-nav="running"]) .dscx-nav::before{
+  content:"";position:absolute;inset:-7px;border-radius:50%;
+  background:radial-gradient(circle,
+    color-mix(in oklab,var(--dsw-alias-state-business-primary,#6f9dff) 40%,transparent) 0%,
+    transparent 70%);
+  animation:dscx-nav-breathe 6s cubic-bezier(.45,0,.55,1) infinite;
+  pointer-events:none;
+}
+
+.dscx-nav-dot{
+  position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;
+  background:var(--dsw-alias-state-business-primary,#6f9dff);
+  box-shadow:0 0 0 2px var(--dsw-specific-sidebar-fill,#141416);
+}
+.dscx-nav-dot[data-kind="failed"]{background:var(--dsw-alias-state-warn-primary,#c79a5b)}
+
+@media (prefers-reduced-motion:reduce){
+  button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
+    animation:none;background-image:none;color:inherit;-webkit-text-fill-color:currentColor;
+  }
+  button:has(> span:only-child > .dscx-nav[data-dco-nav="running"]) .dscx-nav::before{
+    animation:none;opacity:.3;
+  }
+}
 `

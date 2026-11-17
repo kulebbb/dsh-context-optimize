@@ -4,24 +4,48 @@
  * 全部 `stroke="currentColor"`、`fill="none"`，颜色由使用处的 token 决定，
  * 不在这里写死色值。路径取自定稿原型。
  */
-/** 侧边栏入口：DSH 会传 `size`（收起 16 / 展开 18）与 `active`。 */
+import { useSyncExternalStore } from 'react'
+import type { InsightNavState } from './navState.ts'
+import { getInsightNavStore } from './navState.ts'
+
+/** 没有 store 时的静态状态，避免重复建对象。 */
+const IDLE: InsightNavState = { running: false, unread: 0, failed: false }
+
+/**
+ * 侧边栏入口：DSH 会传 `size`（收起 16 / 展开 18）与 `active`。
+ *
+ * 外面的 `span.dscx-nav` 是状态钩子：它的 `data-dco-nav` 让样式表能把扫光和未读点
+ * 挂到 DSH 自己渲染的那行文字上，不必依赖 DSH 的哈希类名。
+ */
 export function SidebarPanelIcon(props: { size?: number; active?: boolean }): JSX.Element {
   const size = props.size ?? 16
+  const store = getInsightNavStore()
+  const state = useSyncExternalStore(
+    store?.subscribe ?? (() => () => undefined),
+    store?.getSnapshot ?? (() => IDLE),
+    () => IDLE,
+  )
+  const status = state.running ? 'running' : state.failed ? 'failed' : state.unread > 0 ? 'unread' : 'idle'
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M8 2.2 13.6 5 8 7.8 2.4 5 8 2.2Z" />
-      <path d="M2.4 8 8 10.8 13.6 8" />
-      <path d="M2.4 11 8 13.8l5.6-2.8" />
-    </svg>
+    <span className="dscx-nav" data-dco-nav={status}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M8 2.2 13.6 5 8 7.8 2.4 5 8 2.2Z" />
+        <path d="M2.4 8 8 10.8 13.6 8" />
+        <path d="M2.4 11 8 13.8l5.6-2.8" />
+      </svg>
+      {status === 'unread' || status === 'failed' ? (
+        <i className="dscx-nav-dot" data-kind={status} aria-hidden="true" />
+      ) : null}
+    </span>
   )
 }
 

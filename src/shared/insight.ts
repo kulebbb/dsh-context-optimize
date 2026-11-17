@@ -59,6 +59,8 @@ export interface InsightHistoryEntry {
   readonly durationMs: number
   /** 因为模型返回不合法或超时被跳过的会话数。 */
   readonly failedSessions: number
+  /** 用户第一次看到报告的时间；null = 还没看过（侧边栏会带未读点）。 */
+  readonly readAt: string | null
 }
 
 /** `GET .insight.history` */

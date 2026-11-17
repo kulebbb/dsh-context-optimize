@@ -113,7 +113,8 @@ dsh plugin --profile desktop add @kulebbb/dsh-context-optimize
 - **范围**：近 30 天 / 近 90 天 / 全部，默认只分析**人工会话**，子代理会话会被排除（否则会变成「子代理们干了什么」）；
 - **模型**：默认跟随 DSH 的默认模型，也可以在下拉里换（下拉读的是 DSH 自己的模型目录）；
 - **增量**：每个会话的标签缓存在 `~/.dsh/insight/facets/`，第二次分析只算新增或变过的会话；
-- **产物**：`~/.dsh/insight/runs/<时间>/report.json` 与 `report.html`，索引在 `~/.dsh/insight/index.json`；关掉 DSH 也在。
+- **产物**：`~/.dsh/insight/runs/<时间>/report.json` 与 `report.html`，索引在 `~/.dsh/insight/index.json`；关掉 DSH 也在；
+- **侧边栏状态**：分析在跑时，左侧「Skill 管理」入口的文字上有一道冷色高光缓慢扫过（收起侧边栏时改为图标柔光，6 秒一轮）；跑完但还没看过的报告会让入口带一个蓝色小圆点，点开那份报告后消失；分析失败时换成琥珀色小圆点，进一次洞察面板即清掉。系统开启「减少动态效果」时不显示扫光，「未读」状态存在宿主索引里，重启和多窗口都一致。
 
 ### 归档箱在哪
 
@@ -185,7 +186,7 @@ pnpm check   # typecheck + test + build
 
 - 宿主半：`src/index.ts` + `src/host/**` → `lib/index.js`（ESM）
 - 浏览器半：`src/client/**` → `lib/client.js`（CJS + `window.__ModuleLoader__` 包装）
-- 测试：`tests/**` 18 个 spec、269 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试：`tests/**` 19 个 spec、279 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 - 本地调试用 `link:` 装进 profile，改完 `pnpm build` 后由热重载换上（通常不用重启；没生效时刷新页面或重启一次）；细节见 [`docs/development.md`](docs/development.md)
 
 ## 反馈

@@ -37,6 +37,7 @@ import {
   historyEntryOf,
   listRunIds,
   loadIndex,
+  markIndexRead,
   readReport,
   removeIndexEntry,
   removeRun,
@@ -199,6 +200,10 @@ export class InsightService {
         case ROUTES.insightRemove: {
           const body = await readJson(request)
           return json(await this.remove(parseId(body)))
+        }
+        case ROUTES.insightRead: {
+          const body = await readJson(request)
+          return json(await this.markRead(parseId(body)))
         }
         default:
           throw new OptimizeError('not-found', `未知端点 ${url.pathname}`)
@@ -572,6 +577,14 @@ export class InsightService {
     }
   }
 
+  /** `POST .insight.read`：报告真正显示出来时由客户端调用。 */
+  async markRead(id: string): Promise<{ ok: true }> {
+    if (id === '') throw new OptimizeError('invalid-request', '缺少报告 id')
+    const marked = await markIndexRead(this.deps.dir, id, this.now().toISOString())
+    if (!marked) throw new OptimizeError('not-found', '这份报告不存在或已删除')
+    return { ok: true }
+  }
+
   /** 索引为空时，从磁盘上的报告反推历史条目。 */
   private async recoverIndex(): Promise<InsightHistoryEntry[]> {
     const ids = await listRunIds(this.deps.dir)
@@ -579,7 +592,8 @@ export class InsightService {
     for (const id of ids.slice(0, 50)) {
       const report = await readReport(this.deps.dir, id)
       if (report === null) continue
-      entries.push(historyEntryOf(report, 'done'))
+      // 反推出来的历史没有已读记录，当作看过，避免升级后凭空多出一堆未读点。
+      entries.push(historyEntryOf(report, 'done', report.meta.finishedAt))
     }
     return entries
   }

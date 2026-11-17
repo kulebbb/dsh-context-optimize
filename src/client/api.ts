@@ -85,6 +85,8 @@ export interface ContextOptimizeApi {
   insightReport(id: string, signal?: AbortSignal): Promise<InsightReportPayload>
   /** 洞察：删除一份报告。 */
   insightRemove(id: string): Promise<{ ok: true }>
+  /** 洞察：把一份报告标为已读（用户真正看到报告时调用）。 */
+  insightRead(id: string): Promise<{ ok: true }>
   /** 洞察：宿主兜底的模型列表。 */
   insightModels(signal?: AbortSignal): Promise<InsightModelsPayload>
 }
@@ -279,6 +281,18 @@ export function createContextOptimizeApi(ctx: ClientContext): ContextOptimizeApi
     insightRemove(id) {
       return request<{ ok: true }>(
         ROUTES.insightRemove,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id }),
+        },
+        undefined,
+      )
+    },
+
+    insightRead(id) {
+      return request<{ ok: true }>(
+        ROUTES.insightRead,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },

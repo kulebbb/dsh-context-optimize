@@ -12,6 +12,7 @@ import type { ClientContext, MainPanelId } from './dsh.ts'
 import { createContextOptimizeApi } from './api.ts'
 import { SidebarPanelIcon } from './icons.tsx'
 import { NS, en, zh } from './locales.ts'
+import { createInsightNavStore } from './navState.ts'
 import { PANEL_CSS } from './styles.ts'
 import { Panel } from './views/Panel.tsx'
 
@@ -41,6 +42,12 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(inject, (scope) => {
     const t = scope.locale.bind(NS)
     const api = createContextOptimizeApi(scope)
+
+    // 侧边栏入口的状态（扫光 / 未读点）由这个 store 提供，跟着插件一起装卸。
+    scope.effect(() => {
+      const nav = createInsightNavStore(api)
+      return () => nav.dispose()
+    }, 'dsh-context-optimize: sidebar state')
 
     scope.effect(() => {
       scope.slots.inject('sidebar.panellist', () =>

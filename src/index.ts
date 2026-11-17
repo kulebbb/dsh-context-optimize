@@ -55,6 +55,7 @@ const INSIGHT_WRITE_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.insightStart,
   ROUTES.insightCancel,
   ROUTES.insightRemove,
+  ROUTES.insightRead,
 ])
 
 /**

@@ -11,6 +11,7 @@ import { OptimizeRequestError } from '../api.ts'
 import type { Translate } from '../dsh.ts'
 import { errorMessage, formatArchivedAt, formatNumber } from '../format.ts'
 import { InsightReportView, formatDuration } from './InsightReport.tsx'
+import { getInsightNavStore } from '../navState.ts'
 
 export interface InsightViewProps {
   t: Translate
@@ -110,6 +111,27 @@ export function InsightView(props: InsightViewProps): JSX.Element {
     [api, t],
   )
 
+  // 报告真正显示出来，才算「看过了」：清掉侧边栏的未读点。
+  const reportId = report?.id ?? null
+  useEffect(() => {
+    if (reportId === null) return
+    getInsightNavStore()?.noteReportShown(reportId)
+  }, [reportId])
+
+  // 进面板就意味着看到了失败提示，侧边栏的失败点可以下去了；顺带把状态对齐一次。
+  useEffect(() => {
+    const nav = getInsightNavStore()
+    nav?.clearFailed(status?.runId ?? null)
+    nav?.refresh()
+  }, [])
+
+  // 面板开着的时候失败，也算已经看到。
+  const failedRunId = status?.status === 'failed' ? status.runId : null
+  useEffect(() => {
+    if (failedRunId === null) return
+    getInsightNavStore()?.clearFailed(failedRunId)
+  }, [failedRunId])
+
   // 首次加载：状态、历史、模型目录。
   useEffect(() => {
     let alive = true
@@ -205,6 +227,8 @@ export function InsightView(props: InsightViewProps): JSX.Element {
       await api.insightRemove(id)
       if (report?.id === id) setReport(null)
       await refreshHistory()
+      // 删掉可能是未读的那份，侧边栏的点要跟着消失。
+      getInsightNavStore()?.refresh()
     } catch (cause) {
       setError(messageOf(t, cause, t('error.internal')))
     }

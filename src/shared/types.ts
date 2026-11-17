@@ -25,6 +25,7 @@ export const ROUTES = {
   insightHistory: `${ROUTE_PREFIX}.insight.history`,
   insightReport: `${ROUTE_PREFIX}.insight.report`,
   insightRemove: `${ROUTE_PREFIX}.insight.remove`,
+  insightRead: `${ROUTE_PREFIX}.insight.read`,
 } as const
 
 export type RouteName = keyof typeof ROUTES

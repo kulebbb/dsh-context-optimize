@@ -94,8 +94,17 @@ export function buildReport(input: BuildReportInput): InsightReport {
   }
 }
 
-/** 从报告派生索引行。 */
-export function historyEntryOf(report: InsightReport, status: InsightHistoryEntry['status']): InsightHistoryEntry {
+/**
+ * 从报告派生索引行。
+ *
+ * `readAt` 只由「标记已读」写入，所以这里给默认值：
+ * 新生成的报告是未读（null），从磁盘反推出来的历史当作已读（用完成时间占位）。
+ */
+export function historyEntryOf(
+  report: InsightReport,
+  status: InsightHistoryEntry['status'],
+  readAt: string | null = null,
+): InsightHistoryEntry {
   return {
     id: report.meta.id,
     startedAt: report.meta.startedAt,
@@ -108,6 +117,7 @@ export function historyEntryOf(report: InsightReport, status: InsightHistoryEntr
     model: report.meta.model,
     durationMs: report.meta.durationMs,
     failedSessions: report.stats.failedSessions,
+    readAt,
   }
 }
 
@@ -178,10 +188,21 @@ export async function loadIndex(insightDir: string): Promise<InsightIndexFile> {
     const raw = await readFile(join(insightDir, 'index.json'), 'utf8')
     const parsed = JSON.parse(raw) as Partial<InsightIndexFile>
     if (parsed.version !== 1 || !Array.isArray(parsed.entries)) return { version: 1, entries: [] }
-    const entries = parsed.entries.filter(
-      (entry): entry is InsightHistoryEntry =>
-        typeof entry === 'object' && entry !== null && typeof (entry as InsightHistoryEntry).id === 'string',
-    )
+    const entries: InsightHistoryEntry[] = []
+    for (const raw of parsed.entries) {
+      if (typeof raw !== 'object' || raw === null) continue
+      const entry = raw as InsightHistoryEntry
+      if (typeof entry.id !== 'string') continue
+      // 旧索引完全没有这个字段（undefined）时当作看过了，避免升级后凭空多出一堆未读点；
+      // 显式写 null 才是「未读」，不能被这段兜底吃掉。
+      const readAt =
+        typeof entry.readAt === 'string'
+          ? entry.readAt
+          : entry.readAt === null
+            ? null
+            : (entry.finishedAt ?? entry.startedAt)
+      entries.push({ ...entry, readAt })
+    }
     return { version: 1, entries }
   } catch {
     return { version: 1, entries: [] }
@@ -205,6 +226,19 @@ export async function appendIndex(insightDir: string, entry: InsightHistoryEntry
   const index = await loadIndex(insightDir)
   const rest = index.entries.filter((item) => item.id !== entry.id)
   await saveIndex(insightDir, [entry, ...rest])
+}
+
+/** 把一条标记为已读；本来就已读时什么都不改。 */
+export async function markIndexRead(insightDir: string, id: string, at: string): Promise<boolean> {
+  const index = await loadIndex(insightDir)
+  const target = index.entries.find((entry) => entry.id === id)
+  if (target === undefined) return false
+  if (target.readAt !== null) return true
+  await saveIndex(
+    insightDir,
+    index.entries.map((entry) => (entry.id === id ? { ...entry, readAt: at } : entry)),
+  )
+  return true
 }
 
 /** 从索引里删掉一条。 */

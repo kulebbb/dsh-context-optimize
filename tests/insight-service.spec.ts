@@ -367,6 +367,41 @@ describe('路由', () => {
     expect(removeResponse.status).toBe(200)
   })
 
+  it('新报告默认未读，标已读之后历史里带时间', async () => {
+    const service = makeService()
+    await service.handle(
+      new Request(`${BASE}${ROUTES.insightStart}`, {
+        method: 'POST',
+        body: JSON.stringify({ days: 30, provider: 'magpie', model: 'demo-model' }),
+      }),
+    )
+    const done = await waitDone(service)
+    const id = done.reportId ?? ''
+
+    const before = (await (
+      await service.handle(new Request(`${BASE}${ROUTES.insightHistory}`))
+    ).json()) as { entries: { id: string; readAt: string | null }[] }
+    expect(before.entries[0]).toMatchObject({ id, readAt: null })
+
+    const readResponse = await service.handle(
+      new Request(`${BASE}${ROUTES.insightRead}`, { method: 'POST', body: JSON.stringify({ id }) }),
+    )
+    expect(readResponse.status).toBe(200)
+
+    const after = (await (
+      await service.handle(new Request(`${BASE}${ROUTES.insightHistory}`))
+    ).json()) as { entries: { id: string; readAt: string | null }[] }
+    expect(typeof after.entries[0]?.readAt).toBe('string')
+  })
+
+  it('标已读时 id 不存在返回 404', async () => {
+    const service = makeService()
+    const response = await service.handle(
+      new Request(`${BASE}${ROUTES.insightRead}`, { method: 'POST', body: JSON.stringify({ id: 'nope' }) }),
+    )
+    expect(response.status).toBe(404)
+  })
+
   it('重复发起返回 409', async () => {
     const service = makeService({ llm: makeLlm({ slowMs: 300 }).llm })
     const body = JSON.stringify({ days: 30, provider: 'magpie', model: 'demo-model' })

@@ -11,6 +11,7 @@ import {
   buildReport,
   historyEntryOf,
   loadIndex,
+  markIndexRead,
   readReport,
   removeIndexEntry,
   removeRun,
@@ -195,5 +196,64 @@ describe('HTML 导出', () => {
     const { htmlPath } = await writeReport(tmp, reportOf())
     const html = await readFile(htmlPath, 'utf8')
     expect(html.startsWith('<!doctype html>')).toBe(true)
+  })
+})
+
+describe('未读状态', () => {
+  it('新报告默认未读，标已读只写一次', async () => {
+    const report = buildReport({
+      id: '2026-11-17T16-20-00',
+      startedAt: new Date('2026-11-17T16:20:00+08:00'),
+      finishedAt: new Date('2026-11-17T16:24:00+08:00'),
+      days: 30,
+      provider: 'p',
+      model: 'm',
+      inputTokens: 10,
+      outputTokens: 5,
+      cacheReadTokens: 0,
+      failedSessions: 0,
+      collect: collectOf(),
+      aggregate: aggregateOf(),
+      hygiene: null,
+    })
+    const entry = historyEntryOf(report, 'done')
+    expect(entry.readAt).toBeNull()
+
+    await appendIndex(tmp, entry)
+    await expect(markIndexRead(tmp, entry.id, '2026-11-17T17:00:00.000Z')).resolves.toBe(true)
+    const index = await loadIndex(tmp)
+    expect(index.entries[0]?.readAt).toBe('2026-11-17T17:00:00.000Z')
+
+    // 已经读过的再标一次不覆盖时间，也不报错。
+    await expect(markIndexRead(tmp, entry.id, '2026-11-18T00:00:00.000Z')).resolves.toBe(true)
+    const again = await loadIndex(tmp)
+    expect(again.entries[0]?.readAt).toBe('2026-11-17T17:00:00.000Z')
+
+    await expect(markIndexRead(tmp, 'missing', '2026-11-18T00:00:00.000Z')).resolves.toBe(false)
+  })
+
+  it('旧索引没有 readAt 时当作已读，不会凭空多出未读点', async () => {
+    const legacy = {
+      version: 1,
+      entries: [
+        {
+          id: '2026-11-01T10-00-00',
+          startedAt: '2026-11-01T10:00:00.000Z',
+          finishedAt: '2026-11-01T10:05:00.000Z',
+          status: 'done',
+          days: 30,
+          sessions: 3,
+          tokens: 100,
+          provider: 'p',
+          model: 'm',
+          durationMs: 300000,
+          failedSessions: 0,
+        },
+      ],
+    }
+    const { writeFile } = await import('node:fs/promises')
+    await writeFile(join(tmp, 'index.json'), JSON.stringify(legacy), 'utf8')
+    const index = await loadIndex(tmp)
+    expect(index.entries[0]?.readAt).toBe('2026-11-01T10:05:00.000Z')
   })
 })
