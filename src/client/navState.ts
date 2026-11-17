@@ -75,6 +75,8 @@ export interface InsightNavStore {
   clearFailed(runId: string): void
   /** 手动补一次状态（面板刷新后调用，省一次轮询等待）。 */
   refresh(): void
+  /** 面板刚发起一次分析：立刻亮起「运行中」，别等下一轮轮询。 */
+  noteRunStarted(): void
   dispose(): void
 }
 
@@ -220,6 +222,11 @@ export function createInsightNavStore(api: ContextOptimizeApi): InsightNavStore 
     refresh() {
       void tick()
       void refreshHistory()
+    },
+    noteRunStarted() {
+      emit({ running: true, unread: state.unread, failed: false })
+      // 立刻排一轮快轮询，让进度和「跑完变未读」都跟上。
+      schedule(RUNNING_INTERVAL_MS)
     },
     dispose() {
       disposed = true

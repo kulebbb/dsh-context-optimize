@@ -462,9 +462,9 @@ export const PANEL_CSS = `
 }
 
 /* ===== 侧边栏入口：运行中扫光 / 未读点 / 收起态柔光 =====
-   侧边栏那行是 DSH 自己渲染的，我们只有一个图标节点在里面。
-   所以用「结构选择器 + :has()」从图标反选到整行，再选中它渲染的文字节点，
-   不依赖 DSH 的哈希类名，升级后也不容易失效。 */
+   侧边栏那行由 DSH 自己渲染，我们只有一个图标节点在里面。图标组件会走到按钮上，
+   把状态写到它渲染的文字节点（data-dco-sweep），收起时则在自己的根节点上写
+   data-dco-rail。样式只认这两个我们自己写的标记，不依赖 DSH 的层级与类名。 */
 .dscx-nav{position:relative;display:inline-flex;align-items:center;justify-content:center}
 
 /* 92% / 8% 是「高光带完全出画」的位置：停在两端时文字看不出残留的蓝边。 */
@@ -481,10 +481,8 @@ export const PANEL_CSS = `
 
 /* 展开时：文字被一道冷色高光缓慢扫过。
    注意：这里给文字节点设了 animation，会覆盖 DSH 自己在展开时用的 0.2s 入场动画
-   （panelTitle.wide）。代价是展开瞬间少了那一下淡入，换的是稳定的扫光，值得。
-   高光带从文字左外侧走到右外侧：background-size 300% 时，
-   高光中心在图像 50% 处，对应 background-position-x 从 82% 到 18%。 */
-button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
+   （panelTitle.wide）。代价是展开瞬间少了那一下淡入，换的是稳定的扫光，值得。 */
+[data-dco-sweep="running"]{
   /* 文字本色不动，只让扫过的那一段变成浅冷蓝（品牌色在深色主题下就是 #7aaaff） */
   --dscx-sweep-base:var(--dsw-alias-label-primary);
   --dscx-sweep-band:var(--dsw-alias-state-business-primary,#7aaaff);
@@ -502,28 +500,28 @@ button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
 }
 
 /* 收起时没有文字可扫：图标自己缓慢呼吸 */
-button:has(> span:only-child > .dscx-nav[data-dco-nav="running"]) .dscx-nav::before{
+.dscx-nav[data-dco-rail="1"][data-dco-nav="running"]::before{
   content:"";position:absolute;inset:-7px;border-radius:50%;
   background:radial-gradient(circle,
-    color-mix(in oklab,var(--dsw-alias-state-business-primary,#6f9dff) 40%,transparent) 0%,
+    color-mix(in oklab,var(--dsw-alias-state-business-primary,#7aaaff) 40%,transparent) 0%,
     transparent 70%);
   animation:dscx-nav-breathe 6s cubic-bezier(.45,0,.55,1) infinite;
   pointer-events:none;
 }
 
+/* 角标：不加描边，靠位置避开图标本身 */
 .dscx-nav-dot{
-  position:absolute;top:-2px;right:-2px;width:6px;height:6px;border-radius:50%;
-  background:var(--dsw-alias-state-business-primary,#6f9dff);
-  box-shadow:0 0 0 2px var(--dsw-specific-sidebar-fill,var(--dsw-alias-bg-base,#1b1b1c));
+  position:absolute;top:-3px;right:-5px;width:6px;height:6px;border-radius:50%;
+  background:var(--dsw-alias-state-business-primary,#7aaaff);
 }
 .dscx-nav-dot[data-kind="failed"]{background:var(--dsw-alias-state-warn-primary,#c79a5b)}
 
 @media (prefers-reduced-motion:reduce){
   /* 不做扫光，也不在文字上留蓝色；运行中改由图标的一圈静态柔光表示。 */
-  button:has(> span > .dscx-nav[data-dco-nav="running"]) > span + span:last-child{
+  [data-dco-sweep="running"]{
     animation:none;background-image:none;color:inherit;-webkit-text-fill-color:currentColor;
   }
-  button:has(svg) .dscx-nav[data-dco-nav="running"]::before{
+  .dscx-nav[data-dco-nav="running"]::before{
     content:"";position:absolute;inset:-7px;border-radius:50%;
     background:radial-gradient(circle,
       color-mix(in oklab,var(--dsw-alias-state-business-primary,#7aaaff) 40%,transparent) 0%,

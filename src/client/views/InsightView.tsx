@@ -205,6 +205,8 @@ export function InsightView(props: InsightViewProps): JSX.Element {
     try {
       const next = await api.insightStart({ days, provider: option.provider, model: option.model })
       setStatus(next)
+      // 侧边栏的扫光要立刻亮，不用等它自己的轮询。
+      getInsightNavStore()?.noteRunStarted()
     } catch (cause) {
       setError(messageOf(t, cause, t('insight.startFailed')))
     } finally {

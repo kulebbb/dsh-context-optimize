@@ -270,3 +270,16 @@ describe('竞态与订阅', () => {
     store.dispose()
   })
 })
+
+describe('noteRunStarted', () => {
+  it('刚点下开始就亮起运行中，不等轮询', async () => {
+    const api = makeApi({ status: statusOf(), entries: [] })
+    const store = start(api)
+    await settle()
+    expect(store.getSnapshot().running).toBe(false)
+
+    store.noteRunStarted()
+    expect(store.getSnapshot().running).toBe(true)
+    expect(store.getSnapshot().failed).toBe(false)
+  })
+})

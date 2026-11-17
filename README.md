@@ -186,7 +186,7 @@ pnpm check   # typecheck + test + build
 
 - 宿主半：`src/index.ts` + `src/host/**` → `lib/index.js`（ESM）
 - 浏览器半：`src/client/**` → `lib/client.js`（CJS + `window.__ModuleLoader__` 包装）
-- 测试：`tests/**` 19 个 spec、286 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试：`tests/**` 19 个 spec、287 条用例，全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 - 本地调试用 `link:` 装进 profile，改完 `pnpm build` 后由热重载换上（通常不用重启；没生效时刷新页面或重启一次）；细节见 [`docs/development.md`](docs/development.md)
 
 ## 反馈
