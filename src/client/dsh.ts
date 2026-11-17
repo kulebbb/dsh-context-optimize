@@ -41,7 +41,22 @@ export interface RemoteResult<T> {
   error?: unknown
 }
 
+/** DSH 模型目录里的一组模型。 */
+export interface ModelCatalogGroup {
+  readonly id: string
+  readonly name: string
+  readonly models: readonly { readonly id: string; readonly name: string }[]
+}
+
+/** DSH 官方模型目录；和 DSH 自己的模型选择器同一份数据。 */
+export interface ModelCatalog {
+  readonly default: { readonly provider: string; readonly model: string }
+  readonly groups: readonly ModelCatalogGroup[]
+}
+
 export interface RemoteSessionService {
+  /** 拉取当前可路由的模型目录；老版本 DSH 没有这个方法。 */
+  modelCatalog?(): Promise<RemoteResult<ModelCatalog>>
   /**
    * 在系统默认应用里打开目录（macOS 落到 Finder）。
    *

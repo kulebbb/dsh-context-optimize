@@ -250,6 +250,33 @@ export class ContextOptimizeService {
     }
   }
 
+  /**
+   * 配置卫生快照：给「洞察」报告用。
+   *
+   * 只读扫描结果，不调模型、不碰磁盘，所以放在这份服务里零额外成本。
+   * 取「近 30 天从未被调用」的生效条目，按占用从大到小给出示例名。
+   */
+  async hygieneSnapshot(): Promise<{
+    active: number
+    unused30d: number
+    unusedTokens: number
+    examples: readonly string[]
+    complete: boolean
+  }> {
+    const scan = await this.scan()
+    const effective = scan.entries.filter((entry) => entry.effective)
+    // 口径是「近 30 天没被调用」而不是「从来没被调用」：后者会漏掉三个月前用过一次的条目，
+    // 而它恰恰是最该归档的那一类。
+    const unused = effective.filter((entry) => entry.calls30d === 0).sort(compareByTokens)
+    return {
+      active: effective.length,
+      unused30d: unused.length,
+      unusedTokens: unused.reduce((sum, entry) => sum + entry.approxTokens, 0),
+      examples: unused.slice(0, 3).map((entry) => entry.name),
+      complete: this.cache.backfill.state === 'done',
+    }
+  }
+
   /** 频次统计覆盖的会话起止日期与会话数。 */
   private corpusRange(): { from: string | null; to: string | null; sessions: number } {
     let from: number | null = null

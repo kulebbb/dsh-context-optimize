@@ -18,6 +18,7 @@ import type { ContextOptimizeApi } from '../api.ts'
 import { OptimizeRequestError } from '../api.ts'
 import type { Translate } from '../dsh.ts'
 import { errorMessage, formatNumber } from '../format.ts'
+import { InsightView } from './InsightView.tsx'
 import { ProjectDetail } from './ProjectDetail.tsx'
 import type { ProjectCounts, ProjectTotals } from './ProjectDetail.tsx'
 import { ProjectsView } from './ProjectsView.tsx'
@@ -191,6 +192,8 @@ export function Panel(props: PanelProps): JSX.Element {
   const { t, api } = props
 
   const [view, setView] = useState<RangeView>('global')
+  /** 「洞察」是覆盖在面板上的一层视图，不改变当前是全局还是项目。 */
+  const [insightOpen, setInsightOpen] = useState(false)
   const [filter, setFilter] = useState<SkillStateFilter>('all')
   const [sortBy, setSortBy] = useState<SortBy>('calls')
   const [project, setProject] = useState<ProjectEntry | null>(null)
@@ -262,7 +265,7 @@ export function Panel(props: PanelProps): JSX.Element {
   useEffect(() => {
     const node = scrollRef.current
     if (node !== null) node.scrollTop = 0
-  }, [view, filter, projectId])
+  }, [view, filter, projectId, insightOpen])
 
   const activeEntries = useMemo(
     () => (globalActive.data?.entries ?? []).filter((entry) => entry.effective),
@@ -541,6 +544,9 @@ export function Panel(props: PanelProps): JSX.Element {
           </div>
           {/* 新版本入口与筛选无关：任何状态下都该让用户看到 */}
           <div className="dscx-ph-acts">
+            <button type="button" className="dscx-btn dscx-btn-sm" onClick={() => setInsightOpen(true)}>
+              {t('insight.button')}
+            </button>
             <UpdateHint t={t} api={api} />
             {filter !== 'all' ? null : (
               <button
@@ -559,7 +565,23 @@ export function Panel(props: PanelProps): JSX.Element {
   }
 
   let content: JSX.Element
-  if (project !== null) {
+  if (insightOpen) {
+    content = (
+      <InsightView
+        t={t}
+        api={api}
+        canOpen={canOpen}
+        onOpenPath={handleOpenPath}
+        onClose={() => setInsightOpen(false)}
+        onArchiveSkills={() => {
+          setInsightOpen(false)
+          setView('global')
+          setFilter('all')
+          setProject(null)
+        }}
+      />
+    )
+  } else if (project !== null) {
     content = (
       <ProjectDetail
         t={t}
@@ -580,6 +602,7 @@ export function Panel(props: PanelProps): JSX.Element {
         onBack={() => setProject(null)}
         onRetry={reloadAll}
         onOpenPath={handleOpenPath}
+        onOpenInsight={() => setInsightOpen(true)}
         onFilter={setFilter}
         onToggleSort={() => setSortBy((value) => (value === 'calls' ? 'tokens' : 'calls'))}
         onArchive={(entry) => handleArchive(entry, 'project', project.id)}
@@ -605,6 +628,7 @@ export function Panel(props: PanelProps): JSX.Element {
           setProject(entry)
         }}
         onOpenPath={handleOpenPath}
+        onOpenInsight={() => setInsightOpen(true)}
       />
     )
   } else {

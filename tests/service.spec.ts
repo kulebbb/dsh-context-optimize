@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdir, realpath } from 'node:fs/promises'
 import { join } from 'node:path'
-import { ContextOptimizeService } from '../src/host/service.ts'
+import { ContextOptimizeService, cacheOf } from '../src/host/service.ts'
 import type { WorkspaceRegistryLike } from '../src/host/service.ts'
 import { ROUTES } from '../src/shared/types.ts'
 import type {
@@ -606,5 +606,21 @@ describe('审查补测：并发、降级与失效工作区', () => {
     const project = after.projects.find((entry) => entry.id === 'w1')
     expect(project?.skillCount).toBe(0)
     expect(project?.archivedCount).toBe(1)
+  })
+})
+
+describe('洞察用的配置卫生快照', () => {
+  it('回溯没完成时标成不完整，完成后按近 30 天未用统计', async () => {
+    const before = await service.hygieneSnapshot()
+    expect(before.complete).toBe(false)
+    expect(before.active).toBeGreaterThan(0)
+    expect(before.unused30d).toBeLessThanOrEqual(before.active)
+
+    // 模拟回溯完成：之后所有 calls30d 为 0 的条目都应被算作「近 30 天未用」。
+    cacheOf(service).backfill = { state: 'done', done: 0, total: 0 }
+    const after = await service.hygieneSnapshot()
+    expect(after.complete).toBe(true)
+    expect(after.active).toBe(before.active)
+    expect(after.examples.length).toBeLessThanOrEqual(3)
   })
 })

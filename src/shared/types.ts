@@ -4,7 +4,7 @@
  * 这里只放类型与纯常量，不 import 任何 node 内置模块，客户端 bundle 也能安全引用。
  */
 
-/** 路由前缀；六个端点都是 `${ROUTE_PREFIX}.<action>` 的形式。 */
+/** 路由前缀；所有端点都是 `${ROUTE_PREFIX}.<action>` 或 `.insight.<action>` 的形式。 */
 export const ROUTE_PREFIX = '/api/context-optimize'
 
 /** 本包的 npm 包名：宿主查安装来源、客户端跳插件页版本区都用它。 */
@@ -18,6 +18,13 @@ export const ROUTES = {
   archive: `${ROUTE_PREFIX}.archive`,
   restore: `${ROUTE_PREFIX}.restore`,
   version: `${ROUTE_PREFIX}.version`,
+  insightModels: `${ROUTE_PREFIX}.insight.models`,
+  insightStart: `${ROUTE_PREFIX}.insight.start`,
+  insightStatus: `${ROUTE_PREFIX}.insight.status`,
+  insightCancel: `${ROUTE_PREFIX}.insight.cancel`,
+  insightHistory: `${ROUTE_PREFIX}.insight.history`,
+  insightReport: `${ROUTE_PREFIX}.insight.report`,
+  insightRemove: `${ROUTE_PREFIX}.insight.remove`,
 } as const
 
 export type RouteName = keyof typeof ROUTES
@@ -269,4 +276,8 @@ export type ErrorCode =
   | 'target-exists'
   | 'path-escape'
   | 'move-failed'
+  /** 已有一次洞察分析在进行，不能再发起。 */
+  | 'busy'
+  /** 洞察分析失败（模型不可用、读取会话失败等）。 */
+  | 'analysis-failed'
   | 'internal'

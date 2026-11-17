@@ -25,6 +25,8 @@ export const STATUS_BY_CODE: Readonly<Record<ErrorCode, number>> = {
   'target-exists': 409,
   'path-escape': 400,
   'move-failed': 500,
+  busy: 409,
+  'analysis-failed': 500,
   internal: 500,
 }
 

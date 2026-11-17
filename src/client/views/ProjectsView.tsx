@@ -28,6 +28,8 @@ export interface ProjectsViewProps {
   onRetry(): void
   onOpenProject(project: ProjectEntry): void
   onOpenPath(path: string): void
+  /** 打开「洞察」视图；入口与全局页一致，都放在页头。 */
+  onOpenInsight?(): void
 }
 
 interface ProjectRowProps {
@@ -126,6 +128,7 @@ function ProjectRow(props: ProjectRowProps): JSX.Element {
 
 export function ProjectsView(props: ProjectsViewProps): JSX.Element {
   const { t, api, payload, loading, error, canOpen, view, onSelectView, onRetry, onOpenProject, onOpenPath } = props
+  const { onOpenInsight } = props
   const [showAll, setShowAll] = useState(false)
 
   const projects = payload?.projects ?? []
@@ -189,6 +192,11 @@ export function ProjectsView(props: ProjectsViewProps): JSX.Element {
           <p className="dscx-sub">{t('projects.subtitle', { total, withSkills: withSkills.length })}</p>
         </div>
         <div className="dscx-ph-acts">
+          {onOpenInsight === undefined ? null : (
+            <button type="button" className="dscx-btn dscx-btn-sm" onClick={onOpenInsight}>
+              {t('insight.button')}
+            </button>
+          )}
           <UpdateHint t={t} api={api} />
         </div>
       </div>

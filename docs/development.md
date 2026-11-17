@@ -9,7 +9,7 @@ pnpm check        # typecheck + test + build
 
 - 宿主半 `src/index.ts` + `src/host/**` → 打成 `lib/index.js`（ESM）
 - 浏览器半 `src/client/**` → 打成 `lib/client.js`（CJS，外加 `window.__ModuleLoader__.load(...)` 外壳）
-- 测试 `tests/**`：12 个 spec、188 条用例；全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
+- 测试 `tests/**`：16 个 spec、242 条用例；全部落在 `os.tmpdir()`，不读真实 `~/.dsh` 或 `~/.agents`
 
 `pnpm build` 会重写 `lib/`，CI 里有一步 `git diff --exit-code lib` 保证提交的产物和源码一致——改完源码记得一起提交产物。
 
@@ -56,6 +56,9 @@ dsh plugin --profile desktop remove @kulebbb/dsh-context-optimize
 | 频次全是 0 | 首次回溯还没跑完（面板顶部有进度条）；或 `sessionQuery` 服务缺失，此时 `backfill.state` 会是 `partial`。 |
 | 项目页空白 | `workspaceRegistry` 服务缺失。它属于 web 层 bundle，命令行跑 `dsh` 时可能没有。 |
 | 调用次数对不上 | 口径是「模型加载该 skill 的次数 + 你手敲 `/skill名` 的次数」，按会话日志折叠，跳过已被处理过的 `seq`。缓存文件在 `~/.dsh/storages/dsh-context-optimize/frequency.v2.json`，删掉会重跑一次全量回溯（本机约 45 秒）。 |
+| 洞察按钮点了没反应 | 宿主缺 `llm` 或 `sessionQuery` 时会明确报错；`agentDefaultModel` 缺失时下拉只剩兜底列表。看 DSH 日志里 `dsh-context-optimize` 的 warn。 |
+| 洞察一直卡在「读取会话」 | 会话日志很多时读取会慢；单会话有 20 秒超时，超过上限（默认 300 个会话）的部分会被舍弃。 |
+| 洞察报告想重跑一遍 | 标签缓存在 `~/.dsh/insight/facets/`，删掉对应会话的 json 就会重算；整份报告与索引在 `~/.dsh/insight/`，面板里也能删。 |
 
 ## 发布
 

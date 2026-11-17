@@ -7,6 +7,14 @@
  * - 所有失败归一成带 code 的 `OptimizeRequestError`，界面按 code 选文案，不解析 message。
  */
 import type {
+  InsightHistoryPayload,
+  InsightModelOption,
+  InsightModelsPayload,
+  InsightReportPayload,
+  InsightStartRequest,
+  InsightStatusPayload,
+} from '../shared/insight.ts'
+import type {
   ErrorCode,
   ErrorPayload,
   MovePayload,
@@ -18,7 +26,7 @@ import type {
   VersionPayload,
 } from '../shared/types.ts'
 import { PACKAGE_NAME, ROUTES } from '../shared/types.ts'
-import type { ClientContext, PluginNavigationService, RemoteSessionService } from './dsh.ts'
+import type { ClientContext, ModelCatalog, PluginNavigationService, RemoteSessionService } from './dsh.ts'
 
 /** 客户端请求超时：超过这个时间给可重试错误，而不是一直转圈。 */
 export const FETCH_TIMEOUT_MS = 30_000
@@ -38,6 +46,15 @@ export class OptimizeRequestError extends Error {
   }
 }
 
+/** 模型下拉的数据：DSH 官方目录优先，宿主兜底接口次之。 */
+export interface InsightModelOptions {
+  readonly options: readonly InsightModelOption[]
+  readonly defaultProvider: string | null
+  readonly defaultModel: string | null
+  /** 读模型列表时的诊断信息；正常为 null。 */
+  readonly error: string | null
+}
+
 export interface ContextOptimizeApi {
   overview(signal?: AbortSignal): Promise<OverviewPayload>
   skills(query: SkillsQuery, signal?: AbortSignal): Promise<SkillsPayload>
@@ -54,6 +71,22 @@ export interface ContextOptimizeApi {
   openPath(path: string): Promise<boolean>
   /** 复制路径，作为打开失败时的降级动作。 */
   copyPath(path: string): Promise<boolean>
+  /** 洞察：读模型下拉（优先 DSH 官方模型目录，失败时走宿主兜底）。 */
+  modelOptions(signal?: AbortSignal): Promise<InsightModelOptions>
+  /** 洞察：发起一次分析。 */
+  insightStart(request: InsightStartRequest): Promise<InsightStatusPayload>
+  /** 洞察：当前运行状态。 */
+  insightStatus(signal?: AbortSignal): Promise<InsightStatusPayload>
+  /** 洞察：取消正在跑的分析。 */
+  insightCancel(): Promise<InsightStatusPayload>
+  /** 洞察：历史报告列表。 */
+  insightHistory(signal?: AbortSignal): Promise<InsightHistoryPayload>
+  /** 洞察：读一份报告。 */
+  insightReport(id: string, signal?: AbortSignal): Promise<InsightReportPayload>
+  /** 洞察：删除一份报告。 */
+  insightRemove(id: string): Promise<{ ok: true }>
+  /** 洞察：宿主兜底的模型列表。 */
+  insightModels(signal?: AbortSignal): Promise<InsightModelsPayload>
 }
 
 function isErrorPayload(value: unknown): value is ErrorPayload {
@@ -191,5 +224,99 @@ export function createContextOptimizeApi(ctx: ClientContext): ContextOptimizeApi
         return false
       }
     },
+
+    async modelOptions(signal) {
+      const session = remoteSession()
+      if (session?.modelCatalog !== undefined) {
+        try {
+          const response = await session.modelCatalog()
+          if (response.ok && response.value !== undefined) {
+            return fromCatalog(response.value)
+          }
+        } catch {
+          // 老版本 DSH 或目录加载失败时退回宿主兜底。
+        }
+      }
+      return request<InsightModelsPayload>(ROUTES.insightModels, { method: 'GET' }, signal)
+    },
+
+    insightModels(signal) {
+      return request<InsightModelsPayload>(ROUTES.insightModels, { method: 'GET' }, signal)
+    },
+
+    insightStatus(signal) {
+      return request<InsightStatusPayload>(ROUTES.insightStatus, { method: 'GET' }, signal)
+    },
+
+    insightStart(body) {
+      return request<InsightStatusPayload>(
+        ROUTES.insightStart,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+        undefined,
+      )
+    },
+
+    insightCancel() {
+      return request<InsightStatusPayload>(ROUTES.insightCancel, { method: 'POST' }, undefined)
+    },
+
+    insightHistory(signal) {
+      return request<InsightHistoryPayload>(ROUTES.insightHistory, { method: 'GET' }, signal)
+    },
+
+    insightReport(id, signal) {
+      return request<InsightReportPayload>(
+        `${ROUTES.insightReport}?${new URLSearchParams({ id }).toString()}`,
+        { method: 'GET' },
+        signal,
+      )
+    },
+
+    insightRemove(id) {
+      return request<{ ok: true }>(
+        ROUTES.insightRemove,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id }),
+        },
+        undefined,
+      )
+    },
+  }
+}
+
+/** 把 DSH 的模型目录拍平成下拉选项；默认模型置顶。 */
+function fromCatalog(catalog: ModelCatalog): InsightModelOptions {
+  const options: InsightModelOption[] = []
+  for (const group of catalog.groups) {
+    for (const model of group.models) {
+      options.push({
+        provider: group.id,
+        providerName: group.name,
+        model: model.id,
+        name: model.name,
+        isDefault: group.id === catalog.default.provider && model.id === catalog.default.model,
+      })
+    }
+  }
+  if (!options.some((option) => option.isDefault)) {
+    options.unshift({
+      provider: catalog.default.provider,
+      providerName: catalog.default.provider,
+      model: catalog.default.model,
+      name: catalog.default.model,
+      isDefault: true,
+    })
+  }
+  return {
+    options,
+    defaultProvider: catalog.default.provider,
+    defaultModel: catalog.default.model,
+    error: null,
   }
 }

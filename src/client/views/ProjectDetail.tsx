@@ -52,6 +52,8 @@ export interface ProjectDetailProps {
   onBack(): void
   onRetry(): void
   onOpenPath(path: string): void
+  /** 打开「洞察」视图；入口与全局页一致，都放在页头。 */
+  onOpenInsight?(): void
   onFilter(filter: SkillStateFilter): void
   onToggleSort(): void
   onArchive(entry: SkillEntry): void
@@ -65,7 +67,7 @@ const DASH = '—'
 export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
   const { t, api, project, entries, filter, sortBy, counts, totals, loading, error, canOpen, pendingKey, view, callsTip } =
     props
-  const { onSelectView, onBack, onRetry, onOpenPath, onFilter, onToggleSort } = props
+  const { onSelectView, onBack, onRetry, onOpenPath, onOpenInsight, onFilter, onToggleSort } = props
   const { onArchive, onRestore, onOpenDir } = props
 
   const archived = filter === 'archived'
@@ -120,6 +122,11 @@ export function ProjectDetail(props: ProjectDetailProps): JSX.Element {
           </div>
         </div>
         <div className="dscx-ph-acts">
+          {onOpenInsight === undefined ? null : (
+            <button type="button" className="dscx-btn dscx-btn-sm" onClick={onOpenInsight}>
+              {t('insight.button')}
+            </button>
+          )}
           <UpdateHint t={t} api={api} />
           <button
             type="button"
